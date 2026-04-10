@@ -1,0 +1,27 @@
+{
+  "name": "smart-testing-with-ai-agents",
+  "version": "1.0.0",
+  "description": "BDD automation framework — CucumberJS + Playwright",
+  "dependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "@playwright/test": "^1.57.0",
+    "axios": "*",
+    "dotenv": "^17.2.3",
+    "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "*",
+    "cucumber-html-reporter": "*",
+    "istanbul-lib-coverage": "^3.2.2",
+    "multiple-cucumber-html-reporter": "*",
+    "nyc": "^17.1.0",
+    "uuid": "^11.1.0"
+  },
+  "scripts": {
+    "cucumber": "npx @cucumber/cucumber --config cucumber.cjs",
+    "bdd_dry_run": "./node_modules/@cucumber/cucumber/bin/cucumber.js --dry-run test --require test",
+    "test:e2e1-users": "npx @cucumber/cucumber --config test/E2E1/UserManagementFlow/cucumber.cjs",
+    "generate_report_cobertura": "nyc report --temp-dir ./test/step-definations/coverageData --reporter cobertura --report-dir ./coverage-cobertura",
+    "generate_report_json": "nyc report --temp-dir ./test/step-definations/coverageData --reporter json --report-dir ./coverage-json"
+  }
+}
