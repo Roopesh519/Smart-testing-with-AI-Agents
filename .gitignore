@@ -1,1 +1,3 @@
 node_modules/
+test/step-definations/failed_scenarios
+test/step-definations/traceDir

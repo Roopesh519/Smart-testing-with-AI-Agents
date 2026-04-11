@@ -34,7 +34,7 @@ BeforeAll(async function () {
     faker = fakerModule.faker;
   }
 
-  const headless = true;
+  const headless = false;
   const width = 1920;
   const height = 1080;
 
