@@ -18,18 +18,101 @@ mandatory user confirmation gate between Phase 1 and Phase 2. You never skip the
 
 ---
 
+## TOKEN TRACKING — runs automatically, no user input needed
+
+Token tracking is a **silent background task** woven into every phase.
+You call `track_tokens.py` and `context_snapshot.py` automatically using the Bash tool.
+**Never ask the user for token values. Never mention token tracking in conversation.**
+The user only sees the final summary at the very end.
+
+### How to get token values automatically
+
+At every checkpoint, run this two-step bash command:
+
+```bash
+# Step 1: get estimated context flags from context_snapshot.py
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase <PHASE_NAME>)
+
+# Step 2: pass those flags directly into track_tokens.py
+python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py <COMMAND> --card <CARD_ID> $SNAP --model claude-sonnet-4-6
+```
+
+### Token tracking checkpoints — execute at each boundary
+
+| When | Command to run |
+|------|---------------|
+| **Before Step 0** (skill entry) | `start` |
+| **After Step 0** (Jira fetched) | `phase --name jira_fetch` |
+| **After Gate 1** (Gherkin confirmed) | `phase --name gherkin_generation` |
+| **After Gate 2** (Step defs confirmed) | `phase --name step_definitions` |
+| **After Step 4** (POM written) | `phase --name pom_generation` |
+| **After Step 5** (dry run passes) | `end` then `report` then `session` |
+
+### Exact bash commands to copy-paste at each checkpoint
+
+**AT SKILL ENTRY — run this first, before anything else:**
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase start) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
+```
+
+**AFTER JIRA FETCH:**
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase jira_fetch) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name jira_fetch $SNAP
+```
+
+**AFTER GATE 1 (Gherkin confirmed by user):**
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase gherkin_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name gherkin_generation $SNAP
+```
+
+**AFTER GATE 2 (Step defs confirmed by user):**
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase step_definitions) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name step_definitions $SNAP
+```
+
+**AFTER POM WRITTEN:**
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase pom_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name pom_generation $SNAP
+```
+
+**AFTER DRY RUN PASSES — runs end + report + session in one block:**
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase dry_run) && \
+python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
+python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py report && \
+python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py session
+```
+
+**IMPORTANT:** Replace `CARD_ID` with the actual card ID (e.g. `QE-89`) in every command above.
+
+---
+
+---
+
 ## Execution Flow — three phases, two gates
 
 ```
+[TOKEN TRACKING: start]
+         ⬇
 Phase 1: Read COS / Business Rules → Write Gherkin
+[TOKEN TRACKING: phase jira_fetch]
          ⬇
          ── GATE 1: Present Gherkin to user. STOP. Wait for "yes / looks good / proceed". ──
+[TOKEN TRACKING: phase gherkin_generation]  ← run immediately after user confirms
          ⬇
 Phase 2: Write Step Definitions (using Playwright MCP for live element inspection)
+[TOKEN TRACKING: phase step_definitions]
          ⬇
          ── GATE 2: Show step definitions to user. STOP. Wait for confirmation. ──
+[TOKEN TRACKING: phase step_definitions]    ← run immediately after user confirms
          ⬇
-Phase 3: Write POM class → Dry run → Hand-off summary
+Phase 3: Write POM class
+[TOKEN TRACKING: phase pom_generation]
+         ⬇
+         Dry run → fix until clean
+[TOKEN TRACKING: end + report + session]    ← run immediately after dry run passes
+         ⬇
+         Hand-off summary
 ```
 
 **Hard rule:** Do not write a single line of `.cjs` code until the user has confirmed
@@ -121,9 +204,18 @@ Feature file  →  Step definition  →  Page Object (POM)  →  BDDUtilies (API
 ## PHASE 1 — Read COS / Business Rules → Write Gherkin
 ## ═══════════════════════════════════════════════════════
 
-### Step 0 — Fetch the card and identify type
+### Step 0 — Token tracking START + Fetch the card
 
-Fetch the Jira card via Atlassian MCP. Read `issuetype.name`:
+**First action, before anything else:** Run the token tracking start command using the Bash tool.
+Replace `CARD_ID` with the actual card ID extracted from the user's input (e.g. QE-89).
+
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase start) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
+```
+
+Do not show this output to the user. Continue immediately.
+
+**Then fetch the Jira card via Atlassian MCP.** Read `issuetype.name`:
 
 | Card type | Action |
 |-----------|--------|
@@ -138,6 +230,11 @@ Extract from the card:
 - **Acceptance Criteria (ACs) / COS** — these become your `Rule:` blocks
 - **Figma link** — if present, note it
 - **Comments** — dev notes, known constraints
+
+**After Jira card is fetched:** Run the jira_fetch phase checkpoint (silent, no user output).
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase jira_fetch) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name jira_fetch $SNAP
+```
 
 ---
 
@@ -245,7 +342,13 @@ ask exactly this:
 
 **DO NOT write any `.cjs` files until the user confirms.**
 If the user requests changes, update the Gherkin and re-present it. Repeat until confirmed.
-Only when the user says "yes", "looks good", "confirmed", "proceed", or equivalent — move to Phase 2.
+Only when the user says "yes", "looks good", "confirmed", "proceed", or equivalent:
+
+1. Immediately run the gherkin_generation phase checkpoint (silent):
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase gherkin_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name gherkin_generation $SNAP
+```
+2. Then move to Phase 2.
 
 ---
 
@@ -343,6 +446,11 @@ Present the step definitions to the user and ask:
 > **Type "looks good" or "confirmed" to proceed to the POM, or tell me what to change.**
 
 **DO NOT write the POM file until the user confirms the step definitions.**
+
+Only when user confirms — run the step_definitions phase checkpoint (silent):
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase step_definitions) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name step_definitions $SNAP
+```
 
 ---
 
@@ -447,6 +555,11 @@ module.exports = AddUserPage;
 
 ---
 
+**After POM file is written:** Run pom_generation phase checkpoint (silent):
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase pom_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name pom_generation $SNAP
+```
+
 ### Step 5 — Dry Run Validation
 
 ```bash
@@ -459,6 +572,15 @@ npx cucumber-js --dry-run
 - ❌ `require` errors → fix paths, re-run
 
 Fix and re-run automatically. Do not hand off until clean.
+
+**Once dry run passes — immediately run the full token tracking close-out (silent):**
+```bash
+SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase dry_run) && \
+python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
+python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py report && \
+python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py session
+```
+Save the output of the session command — it will be shown in the hand-off summary.
 
 ---
 
@@ -481,6 +603,13 @@ File upload method:          <setInputFiles / uploadViaButton / dragAndDropFile 
 data-testid added to source: <element list or "none required">
 Playwright MCP used for:     <list of pages/elements inspected>
 Dry-run: PASSED
+
+── Token Usage (this run) ──────────────────────────────────────
+  <paste the session table output from track_tokens.py session here>
+  Analytics chart: ~/.claude/token_analytics.png
+  Raw snapshots  : ~/.claude/token_snapshots/<CARD-ID>_*
+  Export data    : python3 track_tokens.py export --card <CARD-ID>
+────────────────────────────────────────────────────────────────
 
 Ready for: Rupesh (manual agent) · Suhas (bug reporter)
 ```

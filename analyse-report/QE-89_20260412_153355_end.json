@@ -1,0 +1,33 @@
+{
+  "schema_version": "2.0",
+  "card": "QE-89",
+  "phase": "end",
+  "phase_name": null,
+  "phase_index": null,
+  "run_id": "20260412_153355",
+  "captured_at": "2026-04-12T15:45:02.587348",
+  "model": "claude-sonnet-4-6",
+  "notes": "",
+  "context_window": {
+    "max_tokens": 200000,
+    "total_used": 69648,
+    "free": 130352,
+    "pct_used": 34.82,
+    "pressure": "medium",
+    "breakdown": {
+      "messages": 52048,
+      "mcp": 1400,
+      "skills": 1400,
+      "system": 6300,
+      "tools": 8500,
+      "cache_read": 0,
+      "cache_write": 0
+    }
+  },
+  "metrics": {
+    "estimated_cost_usd": 0.37609,
+    "cache_efficiency_pct": 0.0,
+    "dominant_category": "messages",
+    "context_pressure": "medium"
+  }
+}
