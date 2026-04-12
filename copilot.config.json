@@ -1,0 +1,25 @@
+{
+  "name": "Smart Testing Copilot",
+  "wakePhrase": "Hey Claude",
+  "defaultAgent": "qa-agent",
+  "mode": "desktop",
+  "entryCommand": "npm run copilot --",
+  "invokeClaude": true,
+  "previewOnly": false,
+  "debug": false,
+  "voiceEnabled": true,
+  "voiceAutoListen": true,
+  "backgroundVoiceEnabled": true,
+  "webHost": "127.0.0.1",
+  "webPort": 3210,
+  "desktopEntry": "npm run copilot:desktop",
+  "skills": [
+    "qa-agent",
+    "write-acceptance-criteria",
+    "manual-testing",
+    "test-charter",
+    "ui-test-figma",
+    "bug-reporting",
+    "automation"
+  ]
+}

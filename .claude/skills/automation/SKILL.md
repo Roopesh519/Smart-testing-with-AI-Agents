@@ -1,5 +1,5 @@
 ---
-name: automation-agent
+name: automation
 description: >
   Use this skill whenever a QA engineer wants to generate BDD Gherkin feature files,
   Cucumber step definitions, or Playwright Page Object Model (POM) classes from a Jira

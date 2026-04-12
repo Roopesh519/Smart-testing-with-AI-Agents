@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Testing Copilot</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Smart Testing with AI Agents</p>
+        <h1>Copilot Console</h1>
+        <p class="lede">
+          Ask for QA work in plain language, route it through your Claude skills, and inspect the handoff when you need it.
+        </p>
+      </section>
+
+      <section class="panel composer">
+        <label class="label" for="prompt">Prompt</label>
+        <textarea id="prompt" rows="4" placeholder="Generate acceptance criteria for FF-543"></textarea>
+        <div class="voice-bar">
+          <div class="voice-copy">
+            <p class="voice-title">Voice Mode</p>
+            <p id="voiceStatus" class="voice-status">Voice is idle.</p>
+            <p id="voiceTranscript" class="voice-transcript">Say “Hey Claude” followed by your request.</p>
+          </div>
+          <div class="voice-actions">
+            <label class="toggle">
+              <input id="autoListen" type="checkbox" />
+              <span>Auto-listen</span>
+            </label>
+            <button id="voiceButton" class="ghost" type="button">Start listening</button>
+          </div>
+        </div>
+        <div class="controls">
+          <label class="toggle">
+            <input id="previewOnly" type="checkbox" />
+            <span>Preview only</span>
+          </label>
+          <button id="runButton" type="button">Send to Copilot</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Response</h2>
+            <span id="statusPill" class="pill">Idle</span>
+          </div>
+          <pre id="responseText" class="response">Waiting for your first request.</pre>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Debug View</h2>
+            <button id="toggleDebug" class="ghost" type="button">Show details</button>
+          </div>
+          <div id="debugPanel" class="debug hidden">
+            <div class="debug-block">
+              <h3>Route</h3>
+              <p id="routeText">No request yet.</p>
+            </div>
+            <div class="debug-block">
+              <h3>Execution Files</h3>
+              <ul id="filesList"></ul>
+            </div>
+            <div class="debug-block">
+              <h3>Execution Preview</h3>
+              <ul id="stepsList"></ul>
+            </div>
+            <div class="debug-block">
+              <h3>Raw JSON</h3>
+              <pre id="jsonOutput" class="json"></pre>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

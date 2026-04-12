@@ -1,7 +1,9 @@
 {
   "name": "smart-testing-with-ai-agents",
   "version": "1.0.0",
+  "productName": "Smart Testing Copilot",
   "description": "BDD automation framework — CucumberJS + Playwright",
+  "main": "src/desktop/main.cjs",
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
     "@playwright/test": "^1.57.0",
@@ -12,16 +14,78 @@
   "devDependencies": {
     "@cucumber/cucumber": "*",
     "cucumber-html-reporter": "*",
+    "electron": "^35.1.5",
+    "electron-builder": "^26.0.12",
     "istanbul-lib-coverage": "^3.2.2",
     "multiple-cucumber-html-reporter": "*",
     "nyc": "^17.1.0",
     "uuid": "^11.1.0"
   },
+  "author": {
+  "name": "Roopesh",
+  "email": "rsroopesh565@gmail.com"
+  },
   "scripts": {
     "cucumber": "npx @cucumber/cucumber --config cucumber.cjs",
     "bdd_dry_run": "./node_modules/@cucumber/cucumber/bin/cucumber.js --dry-run test --require test",
     "test:e2e1-users": "npx @cucumber/cucumber --config test/E2E1/UserManagementFlow/cucumber.cjs",
+    "copilot": "node src/copilot/index.cjs",
+    "copilot:web": "node src/copilot/server.cjs",
+    "copilot:desktop": "electron .",
+    "pack:desktop": "electron-builder --dir",
+    "dist:desktop": "electron-builder",
+    "dist:linux": "electron-builder --linux AppImage deb",
     "generate_report_cobertura": "nyc report --temp-dir ./test/step-definations/coverageData --reporter cobertura --report-dir ./coverage-cobertura",
     "generate_report_json": "nyc report --temp-dir ./test/step-definations/coverageData --reporter json --report-dir ./coverage-json"
+  },
+  "build": {
+    "appId": "com.smarttesting.copilot",
+    "productName": "Smart Testing Copilot",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".claude",
+        "to": "bundle/.claude"
+      },
+      {
+        "from": "templates",
+        "to": "bundle/templates"
+      },
+      {
+        "from": "outputs",
+        "to": "bundle/outputs"
+      },
+      {
+        "from": "test",
+        "to": "bundle/test"
+      },
+      {
+        "from": "cucumber.cjs",
+        "to": "bundle/cucumber.cjs"
+      },
+      {
+        "from": "copilot.config.json",
+        "to": "bundle/copilot.config.json"
+      },
+      {
+        "from": "README.md",
+        "to": "bundle/README.md"
+      }
+    ],
+    "asar": true,
+    "linux": {
+      "category": "Development",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
   }
 }

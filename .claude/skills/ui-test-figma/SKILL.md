@@ -1,5 +1,5 @@
 ---
-name: ui-testing
+name: ui-test-figma
 description: >
   Compares a live web application page against a Figma design to detect UI inconsistencies.
   User provides a Figma design link (with node ID). The skill captures BOTH the app page and
