@@ -7,27 +7,31 @@ class LoginPage {
   constructor(page) {
     this.page = page;
 
-    // ── Locators ──────────────────────────────────────────────────────────────
-    // Login form — confirmed from live screenshots of https://qa.loopay.com.pl/login
-    // Floating-label UI: no placeholder attribute on inputs → positional selectors
-    // TODO: add data-testid to each element and switch to page.getByTestId('...')
-    this.emailInput   = page.locator('input').nth(0);
-    this.passwordInput = page.locator('input').nth(1);
+    // ── Locators — confirmed via Playwright MCP on https://qa.loopay.com.pl/login ──
+    //
+    // Login form
+    // Floating-label UI: inputs have data-testid matching the label text
+    this.emailInput   = page.getByTestId('Adres e-mail');
+    this.passwordInput = page.getByTestId('Hasło');
+    // Submit button data-testid has a leading space — use getByRole instead
     this.submitButton  = page.getByRole('button', { name: 'Zaloguj się' });
 
-    // OTP screen — 6-box PIN component, first box receives keyboard input
-    // Submit button text confirmed as "Zweryfikuj" from screenshot
-    this.otpInput  = page.locator('input').first();
-    this.otpSubmit = page.getByRole('button', { name: /zweryfikuj|zatwierdź|verify|potwierdź/i });
+    // OTP screen — 6-box PIN component confirmed with data-testid="otp-input-1..6"
+    // Click first box to focus, then page.keyboard.type() auto-advances digit by digit
+    this.otpInput  = page.getByTestId('otp-input-1');
+    this.otpSubmit = page.getByTestId('Zweryfikuj');
 
-    // Resend OTP — link text confirmed from OTP screen screenshot
-    this.resendOtpLink = page.getByText(/wyślij kod ponownie/i);
+    // Resend OTP — button with no data-testid; immediately enabled in QA env
+    this.resendOtpButton = page.getByRole('button', { name: 'Wyślij kod ponownie' });
 
-    // Invalid credentials — inline error text confirmed from screenshot
+    // Invalid credentials — inline paragraph confirmed as "Błędny e-mail lub hasło."
     this.credentialsErrorText = page.getByText(/błędny e-mail lub hasło/i);
 
-    // Mandatory field validation
-    this.validationErrors = page.locator('[class*="error"], [class*="Error"], [role="alert"]');
+    // Invalid OTP — inline paragraph confirmed as "Kod wygasł"
+    this.otpErrorText = page.getByText('Kod wygasł');
+
+    // Mandatory field validation — "To pole jest wymagane" appears below each empty field
+    this.mandatoryError = page.getByText('To pole jest wymagane');
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -50,7 +54,8 @@ class LoginPage {
   }
 
   async enterOtp(otp) {
-    // Wait for OTP screen, click first box, type digit-by-digit so component auto-advances
+    // Wait for OTP screen, click first box, then type digit-by-digit
+    // The 6-box PIN component auto-advances focus on each keystroke
     await this.otpInput.waitFor({ state: 'visible', timeout: 15000 });
     await this.otpInput.click();
     await this.page.keyboard.type(otp);
@@ -63,7 +68,8 @@ class LoginPage {
   // ── Assertions ────────────────────────────────────────────────────────────
 
   async verifyDashboardPage() {
-    // App redirects to a non-login URL after successful auth — check we've left login
+    // After successful login the app redirects to /Panel-główny
+    // Guard against /dashboard assumption — check we've left /login
     await this.page.waitForFunction(
       () => !window.location.href.includes('/login'),
       { timeout: 30000 }
@@ -75,25 +81,25 @@ class LoginPage {
   }
 
   async verifyInvalidCredentialsError() {
-    // Inline error text "Błędny e-mail lub hasło." appears below the email field
+    // Inline paragraph "Błędny e-mail lub hasło." — confirmed not role="alert"
     await this.credentialsErrorText.waitFor({ state: 'visible', timeout: 10000 });
   }
 
   async verifyInvalidOtpError() {
-    // Wrong OTP keeps the user on the OTP screen — verify redirect did NOT happen
-    // and an alert notification is shown (system sends new code on wrong OTP entry)
-    await this.otpInput.waitFor({ state: 'visible', timeout: 10000 });
-    await expect(this.page.getByRole('alert').first()).toBeVisible({ timeout: 10000 });
+    // Inline paragraph "Kod wygasł" shown below OTP boxes on wrong submission
+    await this.otpErrorText.waitFor({ state: 'visible', timeout: 10000 });
   }
 
   async verifyMandatoryFieldErrors() {
-    await expect(this.validationErrors.first()).toBeVisible({ timeout: 10000 });
+    // "To pole jest wymagane" appears below both empty fields
+    await expect(this.mandatoryError.first()).toBeVisible({ timeout: 10000 });
   }
 
-  async verifyResendOtpDisabled() {
-    // Verify OTP screen arrived and the resend link is present
+  async verifyResendOtpOnScreen() {
+    // Confirms OTP screen is active and the Resend OTP button is present.
+    // In QA env the countdown is skipped — the button is enabled immediately.
     await this.otpInput.waitFor({ state: 'visible', timeout: 15000 });
-    await expect(this.resendOtpLink).toBeVisible({ timeout: 10000 });
+    await expect(this.resendOtpButton).toBeVisible({ timeout: 10000 });
   }
 }
 

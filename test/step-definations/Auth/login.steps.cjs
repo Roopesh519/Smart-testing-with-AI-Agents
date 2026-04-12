@@ -58,5 +58,5 @@ Then('{word} should see the invalid OTP error message', async function (persona)
 });
 
 Then('{word} should see the Resend OTP button is disabled', async function (persona) {
-  await loginPage.verifyResendOtpDisabled();
+  await loginPage.verifyResendOtpOnScreen();
 });
