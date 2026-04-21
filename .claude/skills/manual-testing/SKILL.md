@@ -1,6 +1,6 @@
 ---
 name: manual-testing
-description: Execute structured manual testing from a Jira card, generate charter, run tests in browser, file bugs
+description: Execute structured manual testing from a Jira card, run tests in browser, file bugs, then automatically hand off the execution report to the test-charter skill to generate and publish the Test Charter.
 ---
 
 # Manual Testing Agent Skill
@@ -94,8 +94,13 @@ If yes — Username: [___]  Password: [___]
 4. Parallelize bug creation where possible
 
 **Save outputs:**
-- `test-charter-[JIRA-KEY]-[date].md` — full charter with all test results
+- `outputs/test-execution-[JIRA-KEY]-[date].md` — full execution report with all test results (this is the source file for the test-charter skill)
 - `bugs-[JIRA-KEY]-[date].md` — all bug reports (reference only, not chat output)
+
+The execution report saved to `outputs/` must include: tester name, date, environment,
+session duration, all test results (T-01…T-N), all bugs with severity and steps, risks,
+observations, and enhancements. This ensures test-charter can extract every field without
+asking the user again.
 
 **Add comment to original card:**
 ```
@@ -103,8 +108,21 @@ If yes — Username: [___]  Password: [___]
 
 Results: X Pass | X Fail | X Observation | X Blocked | X Total
 Bugs: [PROJ-789], [PROJ-790] (see file for details)
-Charter: test-charter-[KEY]-[date].md
+Charter: outputs/test-execution-[KEY]-[date].md
 ```
+
+---
+
+## PHASE 6 — Hand off to Test Charter
+
+After saving the execution report, automatically invoke the `test-charter` skill:
+> "Testing complete. Handing off to the test-charter skill to generate and publish the charter."
+
+Pass context to test-charter:
+- The report file is already at `outputs/test-execution-[JIRA-KEY]-[date].md`
+- Tester name, reviewer (ask user if not known), and Jira card key are already known — pre-fill them in the Step 3 prompt so the user only needs to confirm, not re-enter.
+
+The test-charter skill takes over from Step 1 (it will find the file in `outputs/`).
 
 ---
 
