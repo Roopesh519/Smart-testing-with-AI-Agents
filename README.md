@@ -35,6 +35,16 @@ SMART-TESTING-WTIH-AI-AGENTS
    npm install
    ```
 
+3. **Optional: set up the Python helpers in a virtual environment**
+   ```bash
+   python3 -m venv .venv
+   .venv/bin/pip install matplotlib numpy
+   ```
+   Use the virtualenv Python when running `track_tokens.py report`:
+   ```bash
+   .venv/bin/python track_tokens.py report
+   ```
+
 ## AI-Assisted Testing with Claude Code
 
 This project integrates with [Claude Code](https://claude.com/claude-code) for intelligent test automation. Available skills:

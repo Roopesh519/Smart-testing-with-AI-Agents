@@ -50,6 +50,7 @@ SCHEMA_VERSION = "2.0"
 LOG_FILE       = Path.home() / ".claude" / "token_usage_log.json"
 SNAPSHOTS_DIR  = Path.home() / ".claude" / "token_snapshots"
 MAX_TOKENS     = 200_000
+REPORT_DEPENDENCIES = ("matplotlib", "numpy")
 
 # USD per token (approximate list prices — update as needed)
 MODEL_PRICING = {
@@ -110,6 +111,21 @@ def estimate_cost(model: str, consumed: int, cache_read: int = 0, cache_write: i
         cache_read  * p["cache_read"]      +
         cache_write * p["cache_write"],
         5,
+    )
+
+
+def report_dependency_help() -> str:
+    deps = " ".join(REPORT_DEPENDENCIES)
+    return (
+        "Missing optional Python dependencies for 'report': "
+        f"{', '.join(REPORT_DEPENDENCIES)}.\n"
+        "This environment uses an externally managed system Python, so the script will not "
+        "attempt to install packages automatically.\n\n"
+        "Recommended setup:\n"
+        "  python3 -m venv .venv\n"
+        "  .venv/bin/pip install "
+        f"{deps}\n"
+        "  .venv/bin/python track_tokens.py report\n"
     )
 
 
@@ -598,13 +614,8 @@ def cmd_report(args):
         import matplotlib.patches as mpatches
         import numpy as np
     except ImportError:
-        print("Installing matplotlib…")
-        os.system(f"{sys.executable} -m pip install matplotlib --quiet --break-system-packages")
-        import matplotlib; matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        import matplotlib.gridspec as gridspec
-        import matplotlib.patches as mpatches
-        import numpy as np
+        print(report_dependency_help(), file=sys.stderr)
+        sys.exit(1)
 
     log  = load_log()
     runs = [r for r in log["runs"] if r["status"] == "complete"]
