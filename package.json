@@ -4,6 +4,7 @@
   "description": "BDD automation framework — CucumberJS + Playwright",
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
+    "@playwright/cli": "^0.1.8",
     "@playwright/test": "^1.57.0",
     "axios": "*",
     "dotenv": "^17.2.3",

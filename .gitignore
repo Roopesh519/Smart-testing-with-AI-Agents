@@ -3,3 +3,4 @@ test/step-definations/failed_scenarios
 test/step-definations/traceDir
 .playwright-mcp
 dist
+.playwright-cli
