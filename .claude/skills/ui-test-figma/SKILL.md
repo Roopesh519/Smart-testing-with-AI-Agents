@@ -1,22 +1,60 @@
 ---
-name: ui-testing
+name: ui-test-figma
 description: >
   Compares a live web application page against a Figma design to detect UI inconsistencies.
-  Uses Playwright MCP for full-page screenshots, DOM snapshots, and computed CSS extraction.
-  Collects Figma URL, app URL, username and password one by one, then logs in automatically
-  (OTP is always 999999). Figma MCP is tried first; falls back to browser tab if unavailable.
-  Trigger when the user says "compare with application", "ui test", "check design",
-  "test this page against figma", "run ui check", or provides a Figma link and asks to compare.
+  Uses Playwright CLI for zero-token screenshots and targeted browser_evaluate for CSS — never
+  browser_snapshot. Figma MCP preferred; browser fallback automatic. OTP always 999999.
+  Can be called standalone or from manual-testing (Step 1 of Manual branch).
+  Trigger: "compare with application", "ui test", "check design", "test this page against figma",
+  "run ui check", or a Figma link with a comparison request.
 compatibility: >
-  Requires Playwright MCP registered via .mcp.json (already set up).
-  Figma MCP is optional — used when available, skipped silently when rate-limited.
-  Login is handled automatically — OTP is always 999999.
+  Playwright CLI (npx playwright) must be available — already installed in this project.
+  Playwright MCP is used only for interactive login. All screenshots use CLI.
+  Figma MCP is optional — browser fallback fires automatically on any error.
+user-invocable: true
 ---
 
-# UI Testing Skill — Playwright MCP
+# UI Test Figma Skill
 
-Automates visual and structural comparison between a Figma design node and a live application page
-using Playwright MCP for full-page capture, DOM access, CSS extraction, and automatic login.
+Compares a live app page against a Figma design. Uses **Playwright CLI** for all screenshots
+(zero response tokens) and targeted `browser_evaluate` for CSS — never `browser_snapshot`.
+
+## Token Budget Rules — enforce throughout this skill
+
+| Operation | USE | NEVER USE |
+|-----------|-----|-----------|
+| Screenshots | `npx playwright screenshot --full-page URL file.png` | `browser_screenshot()` (returns base64) |
+| DOM reading | `browser_evaluate` with targeted selectors | `browser_snapshot()` (returns full tree) |
+| Login flow | Playwright MCP `browser_fill` / `browser_click` | — |
+| Session save | `browser_evaluate` → write `.playwright-session.json` | — |
+
+## Token Tracking — silent background task
+
+Run at skill entry and exit using the existing token tracking infrastructure:
+
+```bash
+PROJECT=/home/user/projects/Smart-testing-with-AI-Agents
+
+# Entry
+SNAP=$(python3 $PROJECT/context_snapshot.py --phase start) && \
+python3 $PROJECT/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
+
+# After login
+SNAP=$(python3 $PROJECT/context_snapshot.py --phase login) && \
+python3 $PROJECT/track_tokens.py phase --card CARD_ID --name login $SNAP
+
+# After comparison
+SNAP=$(python3 $PROJECT/context_snapshot.py --phase comparison) && \
+python3 $PROJECT/track_tokens.py phase --card CARD_ID --name comparison $SNAP
+
+# Exit
+SNAP=$(python3 $PROJECT/context_snapshot.py --phase end) && \
+python3 $PROJECT/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
+python3 $PROJECT/track_tokens.py report && python3 $PROJECT/track_tokens.py session
+```
+
+Replace CARD_ID with the Jira card if called from pipeline, else use `"ui-test"`.
+Never show tracking output to user.
 
 ---
 
@@ -149,24 +187,50 @@ The OTP is always `999999` — fill it automatically, never ask the user.
 
 ---
 
-### Step 1b — Navigate to the Target Page and Capture
+### Step 1b — Navigate to Target Page and Capture (Playwright CLI)
 
-After login succeeds, navigate directly to `TARGET_URL` (the full URL the user provided in Step 0 Q2):
+After login succeeds:
 
+**1. Save the authenticated session to disk** so Playwright CLI can reuse it:
+
+```javascript
+// Run via browser_evaluate in the MCP session:
+browser_evaluate({
+  expression: `JSON.stringify({
+    localStorage: Object.fromEntries(Object.entries(localStorage)),
+    sessionStorage: Object.fromEntries(Object.entries(sessionStorage)),
+    cookies: document.cookie
+  })`
+})
 ```
-1. browser_navigate(url: TARGET_URL)
-2. browser_wait_for(state: "networkidle")      ← wait for all API calls to finish
-3. browser_take_screenshot()                   ← full-page screenshot
-4. browser_snapshot()                          ← full DOM + accessibility tree
+
+Write the result to `.playwright-session.json` (use Write tool).
+
+**2. Take full-page screenshot via Playwright CLI** (zero response tokens):
+
+```bash
+mkdir -p outputs/screenshots
+npx playwright screenshot \
+  --browser chromium \
+  --full-page \
+  --viewport-size "1920,1080" \
+  --wait-for-timeout 3000 \
+  "TARGET_URL" \
+  outputs/screenshots/app-capture.png
 ```
 
-Save `TARGET_URL` as `APP_URL`.
+If the page requires auth and CLI screenshot shows a login page, fall back to MCP:
+```
+browser_navigate(url: TARGET_URL)
+browser_wait_for(state: "networkidle")
+```
+Then save a screenshot path reference — do NOT call `browser_screenshot()` (it returns base64).
 
 Store:
-- `APP_SCREENSHOT` — the full-page image
-- `APP_DOM` — the accessibility/DOM snapshot
+- `APP_SCREENSHOT` — path `outputs/screenshots/app-capture.png`
+- No DOM snapshot — use targeted `browser_evaluate` below instead of `browser_snapshot()`
 
-**Extract computed CSS for key elements** using `browser_evaluate`:
+**3. Extract computed CSS via targeted `browser_evaluate`** (small response, not full DOM):
 
 ```js
 browser_evaluate({
@@ -225,33 +289,36 @@ Mark source as `[Source: Figma MCP]`. Proceed to Step 3.
 
 **If Figma MCP returns any error** (rate limit, auth, timeout, empty) → immediately go to Method B.
 
-#### Method B — Playwright Browser Fallback (automatic, no user input)
+#### Method B — Playwright CLI Fallback (automatic, no user input, zero response tokens)
 
-Open Figma in a **new tab** so the app tab is preserved:
+Use the Playwright CLI to capture Figma in a new process — no MCP tab switching needed:
 
-```
-1. browser_tab_new()
-2. browser_navigate(url: <Figma URL from user>)
-3. browser_wait_for(state: "networkidle")
-4. browser_wait(time: 15)                      ← Figma canvas needs time to render
-5. browser_screenshot()                        ← capture Figma design as rendered
-```
-
-If the screenshot shows a login screen instead of the canvas:
-> "You're not logged into Figma in this browser session. Please log into figma.com and retry."
-
-If screenshot times out:
-```
-6. browser_wait(time: 10)
-7. browser_screenshot()                        ← retry once
+```bash
+mkdir -p outputs/screenshots
+npx playwright screenshot \
+  --browser chromium \
+  --full-page \
+  --viewport-size "1920,1080" \
+  --wait-for-timeout 15000 \
+  "<Figma URL from user>" \
+  outputs/screenshots/figma-design.png
 ```
 
-After capturing, switch back to the app tab:
-```
-8. browser_tab_select(index: 0)               ← return to original app tab
+If the screenshot shows a Figma login page (inspect the saved image with the Read tool):
+> "You're not logged into Figma. Please log into figma.com in your browser, then confirm to retry."
+
+On retry:
+```bash
+npx playwright screenshot \
+  --browser chromium \
+  --full-page \
+  --wait-for-timeout 20000 \
+  "<Figma URL from user>" \
+  outputs/screenshots/figma-design.png
 ```
 
-Mark source as `[Source: Browser Screenshot]`. Proceed to Step 4.
+Store `FIGMA_SCREENSHOT` = path `outputs/screenshots/figma-design.png`.
+Mark source as `[Source: Playwright CLI Screenshot]`. Proceed to Step 4.
 
 ---
 

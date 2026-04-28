@@ -31,10 +31,10 @@ At every checkpoint, run this two-step bash command:
 
 ```bash
 # Step 1: get estimated context flags from context_snapshot.py
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase <PHASE_NAME>)
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase <PHASE_NAME>)
 
 # Step 2: pass those flags directly into track_tokens.py
-python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py <COMMAND> --card <CARD_ID> $SNAP --model claude-sonnet-4-6
+python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py <COMMAND> --card <CARD_ID> $SNAP --model claude-sonnet-4-6
 ```
 
 ### Token tracking checkpoints — execute at each boundary
@@ -52,35 +52,35 @@ python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.
 
 **AT SKILL ENTRY — run this first, before anything else:**
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase start) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase start) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
 ```
 
 **AFTER JIRA FETCH:**
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase jira_fetch) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name jira_fetch $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase jira_fetch) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name jira_fetch $SNAP
 ```
 
 **AFTER GATE 1 (Gherkin confirmed by user):**
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase gherkin_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name gherkin_generation $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase gherkin_generation) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name gherkin_generation $SNAP
 ```
 
 **AFTER GATE 2 (Step defs confirmed by user):**
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase step_definitions) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name step_definitions $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase step_definitions) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name step_definitions $SNAP
 ```
 
 **AFTER POM WRITTEN:**
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase pom_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name pom_generation $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase pom_generation) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name pom_generation $SNAP
 ```
 
 **AFTER DRY RUN PASSES — runs end + report + session in one block:**
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase dry_run) && \
-python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
-python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py report && \
-python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py session
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase dry_run) && \
+python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
+python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py report && \
+python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py session
 ```
 
 **IMPORTANT:** Replace `CARD_ID` with the actual card ID (e.g. `QE-89`) in every command above.
@@ -210,7 +210,7 @@ Feature file  →  Step definition  →  Page Object (POM)  →  BDDUtilies (API
 Replace `CARD_ID` with the actual card ID extracted from the user's input (e.g. QE-89).
 
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase start) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase start) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
 ```
 
 Do not show this output to the user. Continue immediately.
@@ -233,7 +233,7 @@ Extract from the card:
 
 **After Jira card is fetched:** Run the jira_fetch phase checkpoint (silent, no user output).
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase jira_fetch) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name jira_fetch $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase jira_fetch) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name jira_fetch $SNAP
 ```
 
 ---
@@ -346,7 +346,7 @@ Only when the user says "yes", "looks good", "confirmed", "proceed", or equivale
 
 1. Immediately run the gherkin_generation phase checkpoint (silent):
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase gherkin_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name gherkin_generation $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase gherkin_generation) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name gherkin_generation $SNAP
 ```
 2. Then move to Phase 2.
 
@@ -449,7 +449,7 @@ Present the step definitions to the user and ask:
 
 Only when user confirms — run the step_definitions phase checkpoint (silent):
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase step_definitions) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name step_definitions $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase step_definitions) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name step_definitions $SNAP
 ```
 
 ---
@@ -557,7 +557,7 @@ module.exports = AddUserPage;
 
 **After POM file is written:** Run pom_generation phase checkpoint (silent):
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase pom_generation) && python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name pom_generation $SNAP
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase pom_generation) && python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py phase --card CARD_ID --name pom_generation $SNAP
 ```
 
 ### Step 5 — Dry Run Validation
@@ -575,10 +575,10 @@ Fix and re-run automatically. Do not hand off until clean.
 
 **Once dry run passes — immediately run the full token tracking close-out (silent):**
 ```bash
-SNAP=$(python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/context_snapshot.py --phase dry_run) && \
-python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
-python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py report && \
-python3 /home/user/work/Ai-agent-test/Smart-testing-with-AI-Agents/track_tokens.py session
+SNAP=$(python3 /home/user/projects/Smart-testing-with-AI-Agents/context_snapshot.py --phase dry_run) && \
+python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
+python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py report && \
+python3 /home/user/projects/Smart-testing-with-AI-Agents/track_tokens.py session
 ```
 Save the output of the session command — it will be shown in the hand-off summary.
 

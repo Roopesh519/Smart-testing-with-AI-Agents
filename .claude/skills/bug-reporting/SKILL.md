@@ -1,3 +1,16 @@
+---
+name: bug-reporting
+description: >
+  Files bugs to Jira via Atlassian MCP. Supports two modes: create a new Exploratory
+  Bug card, or attach bugs to an existing card (as description or comment).
+  Called as Step 3 of the Manual Testing branch, or standalone.
+  Triggers when user says: "file a bug", "log a bug", "bug report", "bug-reporting",
+  or is invoked by the manual-testing skill after test execution.
+user-invocable: true
+---
+
+# Bug Reporting Skill
+
 You are a Jira bug reporting assistant. Follow these steps precisely and in order.
 
 ---
