@@ -19,7 +19,7 @@ user-invocable: true
 Compares a live app page against a Figma design. Uses **Playwright CLI** for all screenshots
 (zero response tokens) and targeted `browser_evaluate` for CSS — never `browser_snapshot`.
 
-## Token Budget Rules — enforce throughout this skill
+## Token Budget Rules
 
 | Operation | USE | NEVER USE |
 |-----------|-----|-----------|
@@ -28,173 +28,82 @@ Compares a live app page against a Figma design. Uses **Playwright CLI** for all
 | Login flow | Playwright MCP `browser_fill` / `browser_click` | — |
 | Session save | `browser_evaluate` → write `.playwright-session.json` | — |
 
-## Token Tracking — silent background task
+## Token Tracking
 
-Run at skill entry and exit using the existing token tracking infrastructure:
-
-```bash
-PROJECT=/home/user/projects/Smart-testing-with-AI-Agents
-
-# Entry
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase start) && \
-python3 $PROJECT/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
-
-# After login
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase login) && \
-python3 $PROJECT/track_tokens.py phase --card CARD_ID --name login $SNAP
-
-# After comparison
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase comparison) && \
-python3 $PROJECT/track_tokens.py phase --card CARD_ID --name comparison $SNAP
-
-# Exit
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase end) && \
-python3 $PROJECT/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
-python3 $PROJECT/track_tokens.py report && python3 $PROJECT/track_tokens.py session
-```
-
-Replace CARD_ID with the Jira card if called from pipeline, else use `"ui-test"`.
-Never show tracking output to user.
+Silent background task — follow the **Token Tracking** pattern in `SKILLS_CONTEXT.md`.
+Never show tracking output to user. Checkpoints: `start` → `login` → `comparison` → `end + report + session`.
+Use `CARD_ID` if called from pipeline, else `"ui-test"`.
 
 ---
 
 ## Step 0 — Pre-flight: Collect Inputs One by One
 
-Ask questions **one at a time**. Do NOT show all questions upfront. Wait for the answer to each before asking the next.
-
----
+Ask questions **one at a time**. Wait for the answer to each before asking the next.
 
 **Question 1 — Figma URL:**
-
 > Please share the **Figma design link** for the page you want to compare.
->
-> It should look like:
-> `https://www.figma.com/design/<FILE_KEY>/...?node-id=<NODE_ID>`
->
+> It should look like: `https://www.figma.com/design/<FILE_KEY>/...?node-id=<NODE_ID>`
 > Tip: In Figma, right-click the frame → **Copy link** to get a link that includes the `node-id`.
 
-Wait for the user to paste the Figma URL. Validate it has a recognisable Figma domain and a `node-id` param.
-If `node-id` is missing:
-> "Please right-click the frame in Figma → **Copy link** — that version includes the `node-id` needed for comparison."
-
----
+Validate it has a recognisable Figma domain and a `node-id` param. If missing:
+> "Please right-click the frame in Figma → **Copy link** — that version includes the `node-id`."
 
 **Question 2 — App URL:**
+> Got it! Now paste the **full URL of the exact page** you want to test.
 
-> Got it! Now paste the **full URL of the exact page** you want to test (e.g. `https://distributor.qa.zood-pay.net/user-management/distributor-management/distributors/6f90a58d/DST2974`).
-
-Wait for the user to paste the full page URL. Do not proceed until received.
-
-Store the full URL as `TARGET_URL`.
-Extract the base origin (scheme + host, e.g. `https://distributor.qa.zood-pay.net`) as `BASE_URL`.
-
----
+Store as `TARGET_URL`. Extract base origin as `BASE_URL`.
 
 **Question 3 — Check if already logged in:**
 
-Navigate to `BASE_URL` using `browser_navigate` and take a `browser_snapshot`.
+Navigate to `BASE_URL` via `browser_navigate` and take a `browser_snapshot`.
+- **Dashboard/home page** → session active, skip to Step 1b.
+- **Login form** → ask for email, then password.
 
-- **If the snapshot shows a dashboard/home page (not a login form)** → session is active, skip to Step 1b immediately. Do NOT ask for credentials.
-- **If the snapshot shows a login form** → ask for credentials:
+Once inputs collected: `"Got everything. Logging in and starting the comparison now..."`
 
-> It looks like you're not logged in yet. What is your **username or email**?
-
-Wait for answer, then:
-
-> And your **password**?
-
-Wait for answer. Then proceed to Step 1 (login flow).
-
----
-
-Once inputs are collected, reply:
-
-> "Got everything. Logging in and starting the comparison now..."
-
-Then immediately proceed to Step 1 — no more questions.
-
----
+**Parse the Figma URL:**
+- `FILE_KEY` — alphanumeric segment after `/design/` or `/file/`
+- `NODE_ID` — value of `node-id` query param (normalize `-` to `:`, e.g. `123-456` → `123:456`)
 
 ---
 
 ## Critical Rules
 
-- **Never ask the user to take a screenshot manually** — Playwright handles all captures.
-- **Never navigate away from a tab without saving its URL** — always restore after Figma capture.
-- If Figma MCP fails for any reason, **immediately** open Figma in a new browser tab (Method B). Do not pause or ask the user.
-- Always wait for `networkidle` before taking any screenshot — pages with API-driven data must finish loading first.
+- Never ask the user to take a screenshot manually — Playwright handles all captures.
+- If Figma MCP fails for any reason, **immediately** open Figma in a new browser tab (Method B). No pause, no asking user.
+- Always wait for `networkidle` before any screenshot.
 
 ---
 
-## Input Parsing
+## Step 1 — Login to the Application
 
-Parse the Figma URL:
-- `FILE_KEY` — alphanumeric segment after `/design/` or `/file/`
-- `NODE_ID` — value of `node-id` query param (normalize `-` to `:`, e.g. `123-456` → `123:456`)
+**Skip if session check in Step 0 Q3 confirmed already logged in.**
 
-If no Figma URL is provided, ask:
-> "Please share the Figma design link (with node-id) for the page you want to compare."
+Use `browser_snapshot` to read field selectors, then:
+1. `browser_wait_for(state: "networkidle")`
+2. `browser_snapshot()` — read actual input selectors
+3. `browser_fill` email, password
+4. `browser_click` Login button
+5. `browser_wait_for(state: "networkidle")`
+6. `browser_snapshot()` — check for OTP screen
 
----
+**If OTP screen appears** (6-box PIN):
+7. `browser_click` first OTP box
+8. `browser_type(text: "999999")` — always this value, auto-advances
+9. `browser_click` Verify button
+10. `browser_wait_for(state: "networkidle")`
+11. `browser_snapshot()` — confirm past OTP
 
-## Workflow
+Confirm login: dashboard/main nav → proceed. Still on login page → stop with error.
 
-Execute all steps in order. Do not pause between steps unless a blocking error occurs.
-
----
-
-### Step 1 — Login to the Application
-
-**Skip this step entirely if the session check in Step 0 Q3 confirmed the user is already logged in.**
-
-The app login form has:
-- A "Login By" dropdown (leave as "Email Address")
-- An email input field
-- A password input field
-- A "Login" button
-- After submit: a 6-digit OTP screen (OTP is always `999999` in QA)
-
-Use `browser_snapshot` to read the actual field selectors, then fill them:
-
-```
-1. browser_wait_for(state: "networkidle")
-2. browser_snapshot()                           ← read actual input selectors from DOM
-3. browser_fill(selector: <email input>, value: <username>)
-4. browser_fill(selector: <password input>, value: <password>)
-5. browser_click(selector: <Login button>)
-6. browser_wait_for(state: "networkidle")
-7. browser_snapshot()                           ← check what appeared
-```
-
-**If OTP screen appears** (look for a 6-box PIN / OTP input in the snapshot):
-
-```
-8. browser_click(selector: <first OTP box>)
-9. browser_type(text: "999999")                 ← types digit by digit, auto-advances
-10. browser_click(selector: <Verify / Submit button>)
-11. browser_wait_for(state: "networkidle")
-12. browser_snapshot()                          ← confirm past OTP
-```
-
-The OTP is always `999999` — fill it automatically, never ask the user.
-
-**Session is now saved** to `/home/user/.playwright-zoodpay-profile` — future runs will skip login entirely.
-
-**Confirm login success:**
-- Snapshot shows dashboard / main nav → proceed to Step 1b.
-- Still on login page or error shown → stop:
-  > "Login failed. Please check your username and password and try again."
+Run `login` token checkpoint.
 
 ---
 
-### Step 1b — Navigate to Target Page and Capture (Playwright CLI)
+## Step 1b — Navigate to Target Page and Capture
 
-After login succeeds:
-
-**1. Save the authenticated session to disk** so Playwright CLI can reuse it:
-
+**1. Save authenticated session to disk:**
 ```javascript
-// Run via browser_evaluate in the MCP session:
 browser_evaluate({
   expression: `JSON.stringify({
     localStorage: Object.fromEntries(Object.entries(localStorage)),
@@ -203,11 +112,9 @@ browser_evaluate({
   })`
 })
 ```
+Write result to `.playwright-session.json`.
 
-Write the result to `.playwright-session.json` (use Write tool).
-
-**2. Take full-page screenshot via Playwright CLI** (zero response tokens):
-
+**2. Take full-page screenshot via Playwright CLI:**
 ```bash
 mkdir -p outputs/screenshots
 npx playwright screenshot \
@@ -218,81 +125,29 @@ npx playwright screenshot \
   "TARGET_URL" \
   outputs/screenshots/app-capture.png
 ```
+Store as `APP_SCREENSHOT = outputs/screenshots/app-capture.png`.
 
-If the page requires auth and CLI screenshot shows a login page, fall back to MCP:
-```
-browser_navigate(url: TARGET_URL)
-browser_wait_for(state: "networkidle")
-```
-Then save a screenshot path reference — do NOT call `browser_screenshot()` (it returns base64).
+**3. Extract computed CSS via `browser_evaluate`:**
 
-Store:
-- `APP_SCREENSHOT` — path `outputs/screenshots/app-capture.png`
-- No DOM snapshot — use targeted `browser_evaluate` below instead of `browser_snapshot()`
-
-**3. Extract computed CSS via targeted `browser_evaluate`** (small response, not full DOM):
-
-```js
-browser_evaluate({
-  expression: `
-    const results = {};
-    const selectors = {
-      primaryButton:  'button[type="submit"], .btn-primary, [class*="primary"]',
-      heading:        'h1, h2, [class*="heading"], [class*="title"]',
-      navItem:        'nav a, [class*="nav-item"], [class*="sidebar-item"]',
-      tableHeader:    'th, [class*="table-header"], [class*="col-header"]',
-      badge:          '[class*="badge"], [class*="chip"], [class*="tag"]',
-      inputField:     'input[type="text"], input[type="email"]'
-    };
-    for (const [name, selector] of Object.entries(selectors)) {
-      const el = document.querySelector(selector);
-      if (el) {
-        const s = window.getComputedStyle(el);
-        results[name] = {
-          fontSize:        s.fontSize,
-          fontWeight:      s.fontWeight,
-          color:           s.color,
-          backgroundColor: s.backgroundColor,
-          padding:         s.padding,
-          borderRadius:    s.borderRadius,
-          border:          s.border
-        };
-      }
-    }
-    return results;
-  `
-})
-```
-
-Store the result as `APP_CSS`.
+Load `.claude/skills/ui-test-figma/COMPARISON_PATTERNS.md` now — use the
+**CSS Extraction JS** block from that file to run `browser_evaluate`.
+Store result as `APP_CSS`.
 
 ---
 
-### Step 2 — Fetch Figma Design
+## Step 2 — Fetch Figma Design
 
-Try Method A first. On any error, immediately use Method B.
+Try Method A first. On **any** error, immediately use Method B.
 
 #### Method A — Figma MCP (preferred)
-
 ```
 get_design_context(fileKey: FILE_KEY, nodeId: NODE_ID)
 ```
+On success, extract all text layers, layout structure, design tokens.
+Tag each text element: `STATIC`, `DYNAMIC`, or `PATTERN` (rules in COMPARISON_PATTERNS.md).
+Mark source as `[Source: Figma MCP]`.
 
-On success, extract:
-- All text layers: labels, headings, buttons, placeholders, column headers
-- Layout structure: nav, sidebars, tables, cards, forms, footers
-- Design tokens if available: colors, spacing, font sizes
-
-Tag each text element: `STATIC`, `DYNAMIC`, or `PATTERN` (rules in Step 3).
-
-Mark source as `[Source: Figma MCP]`. Proceed to Step 3.
-
-**If Figma MCP returns any error** (rate limit, auth, timeout, empty) → immediately go to Method B.
-
-#### Method B — Playwright CLI Fallback (automatic, no user input, zero response tokens)
-
-Use the Playwright CLI to capture Figma in a new process — no MCP tab switching needed:
-
+#### Method B — Playwright CLI Fallback (automatic, zero response tokens)
 ```bash
 mkdir -p outputs/screenshots
 npx playwright screenshot \
@@ -303,350 +158,64 @@ npx playwright screenshot \
   "<Figma URL from user>" \
   outputs/screenshots/figma-design.png
 ```
-
-If the screenshot shows a Figma login page (inspect the saved image with the Read tool):
+If screenshot shows Figma login page:
 > "You're not logged into Figma. Please log into figma.com in your browser, then confirm to retry."
 
-On retry:
-```bash
-npx playwright screenshot \
-  --browser chromium \
-  --full-page \
-  --wait-for-timeout 20000 \
-  "<Figma URL from user>" \
-  outputs/screenshots/figma-design.png
-```
-
-Store `FIGMA_SCREENSHOT` = path `outputs/screenshots/figma-design.png`.
-Mark source as `[Source: Playwright CLI Screenshot]`. Proceed to Step 4.
+Store `FIGMA_SCREENSHOT = outputs/screenshots/figma-design.png`.
+Mark source as `[Source: Playwright CLI Screenshot]`.
 
 ---
 
-### Step 3 — Intelligent Comparison
+## Step 3 — Intelligent Comparison
 
-#### Tag Classification Rules (for Method A — Figma MCP data)
+**Load `.claude/skills/ui-test-figma/COMPARISON_PATTERNS.md` now.**
 
-| Tag | Rule |
-|---|---|
-| `STATIC` | Button labels, nav items, column headers, section titles, form labels — never changes per user |
-| `DYNAMIC` | Currency amounts, dates, user names/emails, IDs, counts, status badges |
-| `PATTERN` | Greeting text like "Welcome, [Name]" — verify prefix only |
+Use the following from that file:
+- **Tag Classification Rules** — classify Figma elements as STATIC / DYNAMIC / PATTERN
+- **CSS Comparison Rules** — compare design tokens vs computed styles
+- **Visual Comparison Checklist** (Method B) — 13-point structured check
 
-Heuristics:
-- Contains `$`, `€`, `₹`, `%` → `DYNAMIC`
-- Matches date pattern (dd/mm/yyyy, Jan 01 2024, etc.) → `DYNAMIC`
-- All-caps short string (`ACTIVE`, `PENDING`, `PAID`) → `DYNAMIC`
-- Long alphanumeric (>8 chars, mixed case) → `DYNAMIC`
-- Contains `@` → `DYNAMIC`
-- Short label ending `:` or preceding an input → `STATIC`
-
-**Comparison rules by tag:**
-- `STATIC` → exact or case-insensitive match against `APP_DOM` required
-- `DYNAMIC` → verify field exists and is non-empty; do not compare value
-- `PATTERN` → verify static prefix matches
-
-**CSS comparison** (always run if `APP_CSS` was captured):
-
-| Property | What to check |
-|---|---|
-| Font size | Figma token vs `APP_CSS[element].fontSize` |
-| Font weight | Bold/regular from Figma vs computed `fontWeight` |
-| Button color | Figma fill color vs `backgroundColor` |
-| Border radius | Figma corner radius vs `borderRadius` |
-| Padding | Figma padding values vs computed `padding` |
-
-Flag mismatches where the Figma design token and computed style clearly differ (e.g., Figma shows `#3B82F6` but app renders `#6366F1`).
-
-#### Visual Comparison (Method B — Screenshots)
-
-Compare `APP_SCREENSHOT` against the Figma screenshot visually. Check:
-
-1. Page title / heading text — exact match
-2. Navigation structure — all sidebar/nav items present
-3. Breadcrumb trail — matches
-4. Table column headers — all present with same names
-5. Button labels — primary actions, filter, export
-6. Search bar placeholder text — matches
-7. Form field labels — exact match
-8. Section labels — all section headings present
-9. Status badges / chips — present and labeled correctly
-10. Footer row — totals, counts present
-11. Pagination — present or absent consistently
-12. Spacing / alignment — obvious layout gaps or misalignments
-13. Color scheme — primary brand color consistent
-
-For dynamic fields (amounts, names, IDs, dates): **verify presence only, not value**.
+Run `comparison` token checkpoint after comparison is complete.
 
 ---
 
-### Step 4 — Generate Report
+## Step 4 — Generate Report
 
-```
-╔══════════════════════════════════════════════════════════╗
-║           UI COMPARISON REPORT                          ║
-║  App URL : [APP_URL]                                    ║
-║  Figma   : node-id [NODE_ID]                            ║
-║  Method  : [Figma MCP | Browser Screenshot]             ║
-║  Capture : Full-page via Playwright MCP                 ║
-║  Tested  : [timestamp]                                  ║
-╚══════════════════════════════════════════════════════════╝
+Use the **Report Template** from `COMPARISON_PATTERNS.md`.
 
-SUMMARY
-───────
-  Total checks  : XX
-  ✅ Passed      : XX
-  ❌ Failed      : XX
-  ⚠️  Warnings   : XX
-
-────────────────────────────────────────────────────────────
-FAILURES  (action required)
-────────────────────────────────────────────────────────────
-
-[F1] TEXT MISMATCH
-  Element  : [element name]
-  Figma    : "text in design"
-  Live App : "text found in DOM"
-  Severity : High
-
-[F2] MISSING ELEMENT
-  Element  : [element name]
-  Figma    : Present
-  Live App : Not found in DOM
-  Severity : High
-
-[F3] CSS MISMATCH
-  Element  : [element, e.g. "Primary Button"]
-  Property : [e.g. background-color]
-  Figma    : [design value, e.g. #3B82F6]
-  Live App : [computed value, e.g. rgb(99, 102, 241)]
-  Severity : Medium
-
-[F4] EMPTY DYNAMIC FIELD
-  Element  : [field name]
-  Expected : Non-empty value
-  Live App : Empty or absent
-  Severity : Medium
-
-[F5] LAYOUT / STRUCTURAL MISSING
-  Element  : [structural element]
-  Figma    : Present
-  Live App : Not detected
-  Severity : High
-
-────────────────────────────────────────────────────────────
-WARNINGS  (review recommended)
-────────────────────────────────────────────────────────────
-
-[W1] CASE MISMATCH
-  Element  : [element]
-  Figma    : "Title Case"
-  Live App : "lowercase"
-
-[W2] EXTRA ELEMENT IN APP
-  Element  : [element found in app but absent in design]
-  Note     : Verify if intentional addition
-
-[W3] CSS MINOR DIFFERENCE
-  Element  : [element]
-  Property : [e.g. font-size]
-  Figma    : 14px
-  Live App : 13px
-  Note     : Within acceptable range — review if intentional
-
-────────────────────────────────────────────────────────────
-CSS SNAPSHOT (extracted via Playwright)
-────────────────────────────────────────────────────────────
-  Primary Button   : font=[fontSize], color=[color], bg=[backgroundColor], radius=[borderRadius]
-  Heading          : font=[fontSize], weight=[fontWeight], color=[color]
-  Nav Item         : font=[fontSize], color=[color]
-  Table Header     : font=[fontSize], weight=[fontWeight]
-  Badge/Chip       : bg=[backgroundColor], radius=[borderRadius]
-
-────────────────────────────────────────────────────────────
-PASSED
-────────────────────────────────────────────────────────────
-  ✅ [element] — matches
-  ✅ [dynamic field] — value present (not compared)
-
-────────────────────────────────────────────────────────────
-NOTES
-────────────────────────────────────────────────────────────
-- Captured via: Playwright MCP (full-page, networkidle wait)
-- CSS extracted via: window.getComputedStyle()
-- Dynamic fields verified for presence only, not value.
-- Source: [Figma MCP / Browser Screenshot fallback]
-```
-
----
-
-### Step 4b — Save Report to outputs/ (if folder exists)
-
-Check whether the `outputs/` folder exists in the project root:
+### Step 4b — Save Report to outputs/
 
 ```bash
 ls outputs/ 2>/dev/null && echo "EXISTS" || echo "MISSING"
 ```
 
-**If `outputs/` exists:**
-
-1. Derive `URL_SLUG` from `TARGET_URL`:
-   - Split the URL path into segments
-   - Drop any UUID-like segments (pattern: 8-4-4-4-12 hex, e.g. `6f90a58d-db87-4740-91d4-d8d89599c23b`)
-   - Take the last 2 meaningful segments, joined with `-`, lowercased
-   - Example: `.../distributors/6f90a58d-.../DST2974` → `distributors-dst2974`
-
+If `outputs/` exists:
+1. Derive `URL_SLUG` from `TARGET_URL` (drop UUID segments, last 2 meaningful segments, lowercase)
 2. Build filename: `ui-bugs-{URL_SLUG}-{YYYYMMDD-HHmmss}.md`
-   - Timestamp uses the current local time at report generation
-   - Example: `ui-bugs-distributors-dst2974-20260105-143022.md`
-
-3. Write the full report (identical content to Step 4) to `outputs/{filename}` using the Write tool.
-
-4. Store the path as `OUTPUT_FILE = outputs/{filename}`.
-
-5. Tell the user:
-   > "Report saved to `outputs/{filename}` — bug-reporting will clean it up after Jira post."
-
-**If `outputs/` does not exist** — skip this step silently.
+3. Write full report to `outputs/{filename}`.
+4. Tell user: `"Report saved to outputs/{filename}."`
 
 ---
 
-### Step 5 — Jira Bug Logging (optional)
+## Step 5 — Jira Bug Logging (optional)
 
-After showing the report, ask:
-
+Ask:
 > "Would you like me to log the failures as comments on a Jira card?
-> If yes, share the **Jira card link** (e.g. `https://7edge.atlassian.net/browse/PROJ-123`) and the **assignee name**."
+> If yes, share the **Jira card link** and the **assignee name**."
 
-Wait for response before proceeding.
-
-#### Parse Jira Card
-
-Extract issue key from URL (e.g. `PROJ-123`).
-Use `getJiraIssue` to confirm card exists. If not found:
-> "Couldn't find that Jira card. Please double-check the link."
-
-#### Assignee Resolution
-
-Use `lookupJiraAccountId` with the name provided.
-
-- One match → use it directly, no confirmation needed.
-- Multiple matches → list them and ask user to pick by number.
-- No match → ask for correct name or email.
-
-#### Post Comment
-
-Use `addCommentToJiraIssue` with this format:
-
-```
-Hi [~accountId:ACCOUNT_ID],
-
-Please review the UI bugs below, found during automated Figma-vs-Live comparison using Playwright MCP.
-
-------------------------------------------------------------
-🔍 UI BUG REPORT
-Page Tested  : [APP_URL]
-Figma Node   : [NODE_ID]
-Capture Mode : Full-page — Playwright MCP (networkidle)
-Tested On    : [timestamp]
-Source       : [Figma MCP / Browser Screenshot fallback]
-------------------------------------------------------------
-
-📋 SUMMARY
-  Total Failures : [N]
-  🔴 High        : [count]
-  🟠 Medium      : [count]
-  🟡 Low         : [count]
-
-------------------------------------------------------------
-🐛 FAILURES (Action Required)
-------------------------------------------------------------
-
-[F1] 🔴 HIGH — TEXT MISMATCH
-  Element  : [element name]
-  Expected : "[Figma text]"
-  Actual   : "[app text]"
-  Location : [page section]
-
-[F2] 🔴 HIGH — MISSING ELEMENT
-  Element  : [element name]
-  Expected : Present (per Figma)
-  Actual   : Not found
-  Location : [page section]
-
-[F3] 🟠 MEDIUM — CSS MISMATCH
-  Element  : [element]
-  Property : [CSS property]
-  Expected : [Figma value]
-  Actual   : [computed value]
-  Location : [page section]
-
-[F4] 🟠 MEDIUM — EMPTY DYNAMIC FIELD
-  Element  : [field name]
-  Expected : Non-empty value
-  Actual   : Empty or absent
-  Location : [page section]
-
-... (repeat per failure, ordered High → Medium → Low)
-
-------------------------------------------------------------
-ℹ️ NOTES
-  • Dynamic fields (amounts, dates, IDs) verified for presence only.
-  • CSS values extracted via Playwright getComputedStyle().
-  • Warnings excluded — reply "include warnings" to add them.
-------------------------------------------------------------
-```
-
-Do NOT assign the card. Only tag the assignee in the comment.
+If yes:
+1. Extract issue key from URL. Use `getJiraIssue` to confirm card exists.
+2. Use `lookupJiraAccountId` for the assignee name.
+   - One match → use directly. Multiple → list and ask. None → ask for email.
+3. Use `addCommentToJiraIssue` with the **Jira Comment Template** from `COMPARISON_PATTERNS.md`.
+   Do NOT assign the card — only tag the assignee in the comment.
 
 After posting:
-
 ```
-────────────────────────────────────────────────────────────
 JIRA UPDATED
-────────────────────────────────────────────────────────────
   ✅ Comment posted — [N] failure(s) logged
   ✅ Tagged : [Full Name]
   Card : [Jira URL]
-────────────────────────────────────────────────────────────
 ```
 
----
-
-## Playwright MCP Tool Reference
-
-| Task | Tool |
-|---|---|
-| Navigate to URL | `browser_navigate(url: "...")` |
-| Wait for page to fully load | `browser_wait_for(state: "networkidle")` |
-| Full-page screenshot | `browser_screenshot()` |
-| DOM + accessibility tree | `browser_snapshot()` |
-| Extract computed CSS | `browser_evaluate(expression: "...")` |
-| Open new tab | `browser_tab_new()` |
-| Switch to tab by index | `browser_tab_select(index: N)` |
-| List open tabs | `browser_tab_list()` |
-| Fill input field | `browser_fill(selector: "...", value: "...")` |
-| Click element | `browser_click(selector: "...")` |
-| Wait for element | `browser_wait_for(selector: "...", state: "visible")` |
-
----
-
-## Error Handling
-
-| Situation | Action |
-|---|---|
-| Figma MCP rate limited / auth error | Immediately use Method B (new browser tab). No pause, no asking user. |
-| Figma URL has no node-id | Ask user: "Right-click the frame in Figma → Copy link to get a link with node-id." |
-| App page redirects to login | Run Step 1 (login) first, then retry navigation. |
-| `browser_navigate` fails | Stop. Tell user: "Playwright MCP could not reach the URL. Check that the MCP server is running and the URL is correct." |
-| `browser_evaluate` returns null | Skip CSS comparison for that element; note it in the report as "CSS not extracted". |
-| Figma canvas doesn't load in 25s | Ask user: "Figma canvas is slow to load. Please confirm the design is accessible, then type 'retry'." |
-
----
-
-## Severity Guide
-
-| Severity | Meaning |
-|---|---|
-| **High** | User-facing text wrong, structural element missing, broken layout |
-| **Medium** | CSS property mismatch, dynamic field empty, minor structural gap |
-| **Low** | Casing difference, punctuation, minor label variation |
+Run `end + report + session` token close-out.

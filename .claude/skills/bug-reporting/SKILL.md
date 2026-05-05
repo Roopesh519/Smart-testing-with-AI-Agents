@@ -96,6 +96,16 @@ From the input, infer and derive all necessary fields:
 - **Actual Outcome** — extract the described problem
 - **Steps to Reproduce** — extract or derive from the description
 
+Also check for a screenshot to attach. Scan `outputs/screenshots/` for files whose name
+contains the bug's test ID (e.g. `T-01`, `T-02`) or the words `fail` / `observation`:
+
+```bash
+ls outputs/screenshots/ 2>/dev/null
+```
+
+If a matching screenshot exists, store its path as `SCREENSHOT_PATH` for this bug.
+Do NOT ask the user about screenshots — detect automatically.
+
 Do NOT ask the user for any missing fields. Use what was given and proceed.
 
 ---
@@ -114,6 +124,9 @@ Show the bug report in this exact format before posting:
 
 ### Steps to Reproduce:
 [Steps]
+
+### Screenshot:
+[SCREENSHOT_PATH if found, otherwise "None"]
 
 After showing the report, ask:
 "Is this the only bug, or do you have another bug to add?"
@@ -188,39 +201,57 @@ In both cases the content structure is the same as above.
 
 ---
 
+## Step 6b — Attach Screenshots to Jira Card
+
+Run this step immediately after Step 6 succeeds — no user input needed.
+
+**Collect all screenshot paths** gathered across bugs in this session (the `SCREENSHOT_PATH`
+values from each Bug No.). Deduplicate and filter to only files that exist on disk.
+
+For each screenshot file, attach it to the active Jira card using the Jira REST API.
+
+**Resolve the Jira domain** from the card URL already known (e.g. if card URL is
+`https://7edge.atlassian.net/browse/QE-89` then domain is `7edge.atlassian.net`).
+Do NOT rely on an env var for the domain — parse it from the card URL.
+
+**Resolve credentials** — try each source in order until one is non-empty:
+```bash
+JIRA_EMAIL=${JIRA_USER_EMAIL:-${JIRA_EMAIL:-${ATLASSIAN_EMAIL:-""}}}
+JIRA_TOKEN=${JIRA_API_TOKEN:-${ATLASSIAN_API_TOKEN:-${ATLASSIAN_TOKEN:-""}}}
+```
+
+**Attach each screenshot:**
+```bash
+curl -s -o /tmp/jira_attach_result.json -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Basic $(printf '%s:%s' "$JIRA_EMAIL" "$JIRA_TOKEN" | base64 -w 0)" \
+  -H "X-Atlassian-Token: no-check" \
+  -H "Accept: application/json" \
+  -F "file=@SCREENSHOT_FILE_PATH" \
+  "https://JIRA_DOMAIN/rest/api/3/issue/CARD_KEY/attachments"
+```
+
+Replace `SCREENSHOT_FILE_PATH`, `JIRA_DOMAIN`, and `CARD_KEY` with actual values.
+
+**Handle results:**
+- Exit code 200 / 201 → attachment succeeded; store filename for summary
+- Exit code 401 / 403 → credentials wrong; note failure and continue to next file
+- Any curl error or non-2xx → note failure; continue to next file
+
+**If both `JIRA_EMAIL` and `JIRA_TOKEN` are empty**, skip all attachments and add to the
+Step 7 summary: "Screenshots not attached — set `JIRA_USER_EMAIL` and `JIRA_API_TOKEN`
+env vars to enable auto-attachment."
+
+Do NOT stop the skill if attachment fails — it is a best-effort step.
+
+---
+
 ## Step 7 — Confirm completion
 
 Show a summary:
 - Jira card: [Card number with link]
 - Bug report posted: ✓
 - Notified: [Confirmed person's name]
+- Screenshots attached: [list of filenames, or "none" / "credentials not set"]
 
 ---
-
-## Step 8 — Clean up outputs/ report file (after successful Jira post)
-
-Only run this step if the Jira post in Step 6 succeeded.
-
-**Check for a file to clean up:**
-
-```bash
-ls outputs/ui-bugs-*.md 2>/dev/null
-```
-
-- **No files found** → skip silently.
-- **Exactly one file found** → delete it and confirm:
-  ```bash
-  rm outputs/{filename}
-  ```
-  > "`outputs/{filename}` removed."
-- **Multiple files found** → list them and ask:
-  > "Found multiple UI test reports in outputs/. Which should I remove? Reply with the number or 'none' to skip."
-  ```
-  1. outputs/ui-bugs-distributors-dst2974-20260105-143022.md
-  2. outputs/ui-bugs-transactions-20260105-151100.md
-  ```
-  Delete only the chosen file. If user says none → skip.
-
-Never delete files outside `outputs/ui-bugs-*.md`.
-
-Done.

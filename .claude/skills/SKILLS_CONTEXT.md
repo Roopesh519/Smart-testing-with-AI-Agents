@@ -79,24 +79,34 @@ browser_evaluate("() => JSON.stringify({ls: {...localStorage}, ss: {...sessionSt
 # Later CLI screenshots use: --storage-state .playwright-session.json
 ```
 
-## Token Tracking (automation skill pattern — use everywhere)
+## Token Tracking — canonical pattern (all skills follow this)
+
+**Rules:** Silent background task. Never mention in conversation. Replace `CARD_ID` with the actual card ID.
+Scripts live at `/home/user/projects/Smart-testing-with-AI-Agents/`.
 
 ```bash
-# At skill entry
-SNAP=$(python3 context_snapshot.py --phase start) && \
-python3 track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
+PROJECT=/home/user/projects/Smart-testing-with-AI-Agents
 
-# After each phase
-SNAP=$(python3 context_snapshot.py --phase PHASE_NAME) && \
-python3 track_tokens.py phase --card CARD_ID --name PHASE_NAME $SNAP
+# Entry (before any work)
+SNAP=$(python3 $PROJECT/context_snapshot.py --phase start) && \
+python3 $PROJECT/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
 
-# At skill exit
-SNAP=$(python3 context_snapshot.py --phase end) && \
-python3 track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
-python3 track_tokens.py report && python3 track_tokens.py session
+# After each phase (repeat per checkpoint, replacing PHASE_NAME)
+SNAP=$(python3 $PROJECT/context_snapshot.py --phase PHASE_NAME) && \
+python3 $PROJECT/track_tokens.py phase --card CARD_ID --name PHASE_NAME $SNAP
+
+# Exit (after skill completes)
+SNAP=$(python3 $PROJECT/context_snapshot.py --phase end) && \
+python3 $PROJECT/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
+python3 $PROJECT/track_tokens.py report && \
+python3 $PROJECT/track_tokens.py session
 ```
 
-Scripts live at: `/home/user/projects/Smart-testing-with-AI-Agents/`
+**Phase names by skill:**
+- automation: `start` → `jira_fetch` → `gherkin_generation` → `step_definitions` → `pom_generation` → `end`
+- manual-testing: `start` → `jira_fetch` → `ui_testing` → `test_execution` → `end`
+- ui-test-figma: `start` → `login` → `comparison` → `end`
+- test-charter: `start` → `end`
 
 ## Artifact Locations
 

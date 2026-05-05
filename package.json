@@ -19,6 +19,10 @@
     "uuid": "^11.1.0"
   },
   "scripts": {
+    "test": "npx @cucumber/cucumber --config cucumber.cjs",
+    "test:report": "npx @cucumber/cucumber --config cucumber.cjs --format html:reports/report.html",
+    "test:headed": "HEADLESS=false npx @cucumber/cucumber --config cucumber.cjs",
+    "test:dry-run": "npx @cucumber/cucumber --config cucumber.cjs --dry-run",
     "cucumber": "npx @cucumber/cucumber --config cucumber.cjs",
     "bdd_dry_run": "./node_modules/@cucumber/cucumber/bin/cucumber.js --dry-run test --require test",
     "test:e2e1-users": "npx @cucumber/cucumber --config test/E2E1/UserManagementFlow/cucumber.cjs",

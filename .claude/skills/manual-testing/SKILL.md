@@ -2,10 +2,11 @@
 name: manual-testing
 description: >
   Manual Testing branch orchestrator. Follows the flowchart:
-  Jira Card Input → UI Testing (Figma MCP) → Manual Testing (Playwright MCP)
-  → Bug Reporting (Atlassian MCP) → Test Charter → Manual Testing complete.
-  Accepts a Jira card ID and runs all four sub-steps in sequence.
-  Uses Playwright CLI for zero-token test screenshots. Token tracking enabled.
+  Jira Card Input → UI Testing (Figma MCP, optional) → Manual Testing (Playwright MCP)
+  → Bug Reporting (Atlassian MCP) → Test Charter → Automation Agent (optional handoff).
+  Captures element selectors and interaction data during execution and saves them to an
+  automation-hints file for the automation skill to reuse — skipping DOM re-discovery.
+  Uses Playwright CLI for zero-token screenshots. Token tracking enabled.
   Can also be run standalone without the qa-agent.
   Triggers when user says: "test [JIRA-KEY]", "run manual testing for [JIRA-KEY]",
   "do QA on [JIRA-KEY]", "manual test", or "manual-testing".
@@ -14,10 +15,6 @@ user-invocable: true
 
 # Manual Testing Skill — Full Branch Orchestrator
 
-## Context Engineering
-<!-- Load SKILLS_CONTEXT.md for pipeline map. Load individual SKILL.md only when dispatching
-     to that skill. Do NOT load all SKILL.md files at skill entry. -->
-
 ## Token Budget Rules — enforce throughout this skill
 
 | Operation | USE | NEVER USE |
@@ -25,161 +22,185 @@ user-invocable: true
 | Test screenshots | `npx playwright screenshot --full-page URL file.png` | `browser_screenshot()` |
 | DOM reading | `browser_evaluate` with targeted selectors only | `browser_snapshot()` |
 | Login | Playwright MCP `browser_fill` / `browser_click` | — |
+| Element discovery | `browser_evaluate` on `document.activeElement` after each interaction | `browser_snapshot()` |
 
-## Token Tracking — silent background task
+## Token Tracking
 
-```bash
-PROJECT=/home/user/projects/Smart-testing-with-AI-Agents
-
-# Skill entry
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase start) && \
-python3 $PROJECT/track_tokens.py start --card CARD_ID $SNAP --model claude-sonnet-4-6
-
-# After Jira fetch
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase jira_fetch) && \
-python3 $PROJECT/track_tokens.py phase --card CARD_ID --name jira_fetch $SNAP
-
-# After UI Testing (Phase 2)
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase ui_testing) && \
-python3 $PROJECT/track_tokens.py phase --card CARD_ID --name ui_testing $SNAP
-
-# After test execution (Phase 3)
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase test_execution) && \
-python3 $PROJECT/track_tokens.py phase --card CARD_ID --name test_execution $SNAP
-
-# Skill exit (after charter published)
-SNAP=$(python3 $PROJECT/context_snapshot.py --phase end) && \
-python3 $PROJECT/track_tokens.py end --card CARD_ID $SNAP --model claude-sonnet-4-6 && \
-python3 $PROJECT/track_tokens.py report && python3 $PROJECT/track_tokens.py session
-```
-
-Replace CARD_ID with the actual card ID. Never show tracking output to user.
-
-You run the **Manual Testing branch** of the QA pipeline:
-
-```
-Jira Card Input
-      ↓
-[Step 1] UI Testing (Figma MCP)         ← ui-test-figma skill
-      ↓
-[Step 2] Manual Testing (Playwright MCP) ← test execution in browser
-      ↓
-[Step 3] Bug Reporting (Atlassian MCP)   ← bug-reporting skill
-      ↓
-[Step 4] Test Charter                    ← test-charter skill
-      ↓
-Manual Testing Complete
-```
-
-Each step can also be skipped if the user explicitly says so.
+Silent background task — follow the **Token Tracking** pattern in `SKILLS_CONTEXT.md`.
+Checkpoints: `start` → `jira_fetch` → `ui_testing` → `test_execution` → `end + report + session`.
+Replace `CARD_ID` with the actual card ID. Never show tracking output to user.
 
 ---
 
-## Phase 0 — Collect Inputs
-
-**Single prompt to user** (ask everything at once):
+## Pipeline
 
 ```
-To start the Manual Testing pipeline, I need:
-
-1. Jira card ID (e.g. PROJ-123) — if not already given
-2. App URL (e.g. https://staging.myapp.com)
-3. Login required? If yes — Username: [___]  Password: [___]
-4. Figma design link? (optional — UI Testing step will be skipped if omitted)
+Jira Card ID
+      ↓
+[Phase 1] Fetch Jira Card
+      ↓
+[Phase 2] UI Testing (Figma) — optional, ask user
+      ↓
+[Phase 3] Manual Test Execution + Automation Hint Capture
+      ↓
+[Phase 4] Bug Reporting (Atlassian MCP)
+      ↓
+[Phase 5] Test Charter (publish)
+      ↓
+[Phase 6] Offer Automation Agent handoff
 ```
 
-Wait for the user's response. Extract and store:
-- `CARD_ID` — the Jira card key
-- `APP_URL` — the full application URL
-- `USERNAME`, `PASSWORD` — login credentials (if required)
-- `FIGMA_URL` — Figma design link (optional)
+---
+
+## Phase 0 — Collect Card ID
+
+Run token tracking `start` checkpoint.
+
+If the user has not already provided a Jira card ID, ask:
+> "Please share the **Jira card ID** to begin (e.g. `PROJ-123`)."
+
+Wait for the card ID. Then immediately proceed to Phase 1 — do not ask for anything else yet.
 
 ---
 
 ## Phase 1 — Fetch Jira Card
 
-Use Atlassian MCP (`getJiraIssue`) to fetch `CARD_ID`. Extract:
-- Summary / title
-- Description
-- Acceptance Criteria (look for "AC:", "Given/When/Then", checkboxes)
-- Labels, project key
-- Any Figma links in description (use if `FIGMA_URL` was not provided)
+Use `getJiraIssue` to fetch `CARD_ID`. Extract and store:
+- `CARD_TITLE` — summary
+- `CARD_DESCRIPTION` — full description
+- `ACCEPTANCE_CRITERIA` — look for "AC:", "Given/When/Then", numbered/checklist items
+- `FIGMA_URL_FROM_CARD` — any Figma link found in description or comments
+- `PROJECT_KEY` — for bug filing later
+
+Run token tracking `jira_fetch` checkpoint.
 
 If no AC found:
 > "No Acceptance Criteria found on this card. What should be tested?"
+Wait for user response before continuing.
 
-Wait for the user's response before continuing.
+After fetch, ask these **one at a time**:
+
+**Question A — UI Testing:**
+> "Do you want to compare the app against a Figma design before testing? (yes / no)"
+
+- If yes: ask for Figma URL (suggest `FIGMA_URL_FROM_CARD` if found), then app URL + credentials
+- If no: ask for app URL + credentials only
+
+Store:
+- `RUN_UI_TEST` — true/false
+- `FIGMA_URL` — if yes
+- `APP_URL` — full base URL of the app
+- `USERNAME`, `PASSWORD` — login credentials (ask only if not obvious from card)
 
 ---
 
-## Phase 2 — UI Testing (Figma MCP)
+## Phase 2 — UI Testing (optional)
 
-### Skip condition
-If no `FIGMA_URL` was provided and none found in the card, display:
-> "No Figma link provided — skipping UI Testing step."
-Then proceed to Phase 3.
+**Skip if `RUN_UI_TEST = false`** — note "UI Testing: skipped" in final summary.
 
-### When Figma URL is available
+If running:
+> **[Step 1/4] UI Testing — comparing [CARD_ID] live app against Figma...**
 
-Announce:
-
-> **[Step 1/4] UI Testing — comparing [CARD_ID] live app against Figma design...**
-
-Invoke the ui-test-figma skill, passing `FIGMA_URL` and `APP_URL` as context so it does
-not need to re-ask for them:
+Invoke the ui-test-figma skill. Pre-fill its questions using collected values:
+- Figma URL → `FIGMA_URL`
+- App URL → `APP_URL`
+- Credentials → `USERNAME` / `PASSWORD`
 
 ```
 Skill: ui-test-figma
 ```
 
-Pre-fill the answers to its questions using the values already collected:
-- Figma URL → `FIGMA_URL`
-- App URL → `APP_URL`
-- Credentials → `USERNAME` / `PASSWORD` (if available)
+Run token tracking `ui_testing` checkpoint after completion.
 
-Once the UI comparison report is complete, display a brief summary:
-> "UI Testing complete — [N] failures, [N] warnings. Proceeding to manual test execution."
+Brief summary:
+> "UI Testing complete — [N] failures, [N] warnings. Proceeding to manual tests."
 
 ---
 
-## Phase 3 — Manual Test Execution (Playwright MCP)
-
-Announce:
+## Phase 3 — Manual Test Execution + Automation Hint Capture
 
 > **[Step 2/4] Manual Testing — executing tests for [CARD_ID]...**
 
-### 3a — Generate Test Charter
+Initialize an empty hints log in memory:
+```
+HINTS = {
+  card: CARD_ID,
+  baseUrl: BASE_URL,
+  appUrl: APP_URL,
+  pages: [],
+  elements: {},    // keyed by page URL
+  testCases: [],
+  notes: []
+}
+```
 
-Generate a test charter from the Jira card's acceptance criteria:
-- Mission (1 sentence)
-- Target (feature/flow name from card)
-- In scope: 1–3 tests per AC item
-- Out of scope
-- Risk areas
-- Test ideas (T-01, T-02, ... — number sequentially)
-  - 1–3 tests per AC item
-  - 2+ negative/edge case tests
-  - 1+ error state test
-  - Mobile/responsive check if UI
+### 3a — Generate Test Plan
 
-Show charter summary (5 lines max). Ask:
-> "Ready to run these tests?" → proceed on yes.
+From the AC, generate numbered test ideas:
+- 1–3 tests per AC item
+- 2+ negative/edge case tests
+- 1+ error state test
 
-### 3b — Setup Browser
+Show as a compact table (T-01, T-02 ... with name and expected outcome).
+Ask: `"Ready to run these tests? (yes / no or edit)"`
+Proceed on confirmation.
+
+### 3b — Setup Browser + Capture Login Selectors
 
 1. `browser_navigate(url: APP_URL)`
-2. If login required:
-   - `browser_snapshot()` → find login fields
-   - Fill email, password, click login
-   - If OTP screen appears: type `999999`
-   - Confirm logged in before continuing
+2. `browser_wait_for(state: "networkidle")`
 
-### 3c — Execute Tests
+**If login required:**
+3. `browser_snapshot()` — one allowed snapshot to read login form selectors
+4. Record all login elements found into `HINTS.elements[LOGIN_URL]`:
+   - For each input/button interacted with, note: tag, locator used, role/text, data-testid if present
+5. Fill email → `browser_fill`
+6. Fill password → `browser_fill`
+7. Click login button → `browser_click`
+8. `browser_wait_for(state: "networkidle")`
+
+**If OTP screen appears:**
+9. Click first OTP box → `browser_click`
+10. `browser_type(text: "999999")` — always this value
+11. Click verify → `browser_click`
+12. `browser_wait_for(state: "networkidle")`
+
+Confirm login success before proceeding.
+
+Add to `HINTS.pages`: `{ url: LOGIN_URL, description: "Login page" }`
+Add to `HINTS.notes`: any special login behavior observed (OTP type, error format, redirect URL)
+
+### 3c — Execute Tests + Log Automation Hints
 
 For each test T-01, T-02, ...:
+
 1. Navigate to the feature area via Playwright MCP (preserves session)
-2. Interact — `browser_fill`, `browser_click`, `browser_select_option`
-3. **Capture screenshot via Playwright CLI** (zero response tokens):
+2. Add current URL to `HINTS.pages` if not already present
+
+3. For each browser interaction (`browser_fill`, `browser_click`, `browser_select_option`):
+   - Execute the interaction
+   - Immediately run element capture (zero-token, targeted JS):
+     ```javascript
+     browser_evaluate({ expression: `
+       (() => {
+         const el = document.activeElement;
+         if (!el || el === document.body) return null;
+         return {
+           tag:    el.tagName.toLowerCase(),
+           id:     el.id || null,
+           testid: el.getAttribute('data-testid') || null,
+           role:   el.getAttribute('role') || el.type || null,
+           text:   el.innerText?.trim().slice(0, 60) || el.value?.slice(0, 60) || null,
+           name:   el.name || null,
+           type:   el.type || null,
+           nth:    [...document.querySelectorAll(el.tagName)].indexOf(el)
+         };
+       })()
+     ` })
+     ```
+   - Append result to `HINTS.elements[CURRENT_URL]` with a label (e.g. "email input", "submit button")
+
+4. Take screenshot via Playwright CLI (zero response tokens):
    ```bash
    mkdir -p outputs/screenshots
    npx playwright screenshot \
@@ -189,110 +210,152 @@ For each test T-01, T-02, ...:
      "CURRENT_URL" \
      outputs/screenshots/T-[N]-[pass|fail|observation].png
    ```
-   If the page requires the active session (auth-protected), use MCP navigate first
-   then CLI screenshot using the same URL from `browser_evaluate("window.location.href")`.
-4. Assert against expected result from AC using `browser_evaluate` with targeted selectors
-5. Log result to file only (not chat):
-   `T-N | title | status | expected | actual | outputs/screenshots/T-N-status.png`
 
-Status codes:
-- ✅ PASS
-- ❌ FAIL
-- ⚠️ OBSERVATION (unexpected but not clearly wrong)
-- 🔒 BLOCKED (feature unavailable or not deployed)
+5. Assert expected result via targeted `browser_evaluate` on specific selectors
 
-Never skip a test. Keep a running count only in chat.
+6. Log test result (to file only, not chat):
+   `T-N | title | status | expected | actual | screenshot path`
+
+7. Append to `HINTS.testCases`:
+   ```
+   { id: "T-N", name: "...", status: "PASS|FAIL|OBSERVATION|BLOCKED",
+     actions: ["fill email", "click submit", "type OTP 999999"],
+     url: "CURRENT_URL" }
+   ```
+
+Show only running count in chat: `T-01 ✅ T-02 ❌ T-03 ✅ ...`
+
+Status codes: ✅ PASS | ❌ FAIL | ⚠️ OBSERVATION | 🔒 BLOCKED
+
+Never skip a test.
 
 ### 3d — Save Execution Report
 
-Save to `outputs/test-execution-[CARD_ID]-[date].md` with:
-- Tester name, date, environment, session duration
-- All test results (T-01 … T-N)
-- All failures with expected vs actual
+Save to `outputs/test-execution-[CARD_ID]-[YYYYMMDD].md`:
+- Tester, date, environment, session duration
+- All test results with expected vs actual
 - Screenshot references
-- Observations, risks, enhancements
+- Observations, risks
+
+### 3e — Save Automation Hints File
+
+After all tests complete, write `outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md`:
+
+```markdown
+# Automation Hints — [CARD_ID]
+Generated: [date] by manual-testing skill
+Card: [JIRA_URL]
+Base URL: [BASE_URL]
+
+## Environment
+App URL: [APP_URL]
+Login: [USERNAME] / [PASSWORD REDACTED]
+
+## Pages Visited
+| URL | Description |
+|-----|-------------|
+| [url] | [description] |
+
+## Elements Discovered
+
+### [Page Name] ([URL])
+| Element | Locator | Method | data-testid | Notes |
+|---------|---------|--------|-------------|-------|
+| [label] | [selector] | [positional/testid/role/text] | [value or none] | [observations] |
+
+## Test Cases Executed
+| ID | Name | Status | Key Actions |
+|----|------|--------|-------------|
+| T-01 | [name] | PASS | [comma-separated action list] |
+
+## Automation Notes
+[freeform observations: OTP behavior, error message format, API seeding needed,
+ redirect URLs, any elements that need data-testid added, etc.]
+```
+
+Tell the user (one line):
+> "Automation hints saved: `outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md`"
+
+Run token tracking `test_execution` checkpoint.
 
 ---
 
 ## Phase 4 — Bug Reporting (Atlassian MCP)
 
-Announce:
+> **[Step 3/4] Bug Reporting — filing [N] bug(s) for [CARD_ID]...**
 
-> **[Step 3/4] Bug Reporting — filing bugs for [CARD_ID]...**
-
-For each ❌ FAIL and ⚠️ OBSERVATION from Phase 3:
-
-Using Atlassian MCP:
-1. Create a Bug issue in the same project as `CARD_ID`
+For each ❌ FAIL and ⚠️ OBSERVATION:
+1. Create Bug issue in same project as `CARD_ID`
 2. Summary: clear bug title
 3. Description: steps to reproduce, expected vs actual, screenshot reference
 4. Severity: Critical (crash/data loss) | High (AC failed) | Medium (partial) | Low (cosmetic)
-5. Link bug to original card (link type: "relates to")
+5. Link bug to original card ("relates to")
 
 Parallelize bug creation where possible.
 
-**Add a summary comment to the original `CARD_ID`:**
-
+Add summary comment to `CARD_ID`:
 ```
 🧪 Manual Testing Complete
 
 Results: X Pass | X Fail | X Observation | X Blocked | X Total
 Bugs filed: [PROJ-789], [PROJ-790]
-Report: outputs/test-execution-[CARD_ID]-[date].md
+Report: outputs/test-execution-[CARD_ID]-[YYYYMMDD].md
 ```
 
 ---
 
 ## Phase 5 — Test Charter (Publish)
 
-Announce:
+> **[Step 4/4] Test Charter — generating and publishing for [CARD_ID]...**
 
-> **[Step 4/4] Test Charter — generating and publishing charter for [CARD_ID]...**
-
-Invoke the test-charter skill, passing context so it does not need to re-ask:
-- Report file is already at `outputs/test-execution-[CARD_ID]-[date].md`
-- Card key, tester name, and date are already known
+Invoke test-charter skill. Pre-fill its context:
+- Report file: `outputs/test-execution-[CARD_ID]-[YYYYMMDD].md`
+- Card key, tester name, and date already known
 
 ```
 Skill: test-charter
 ```
 
-Pre-fill the test-charter Step 3 metadata prompt using known values so the user
-only needs to confirm, not re-enter.
+Run token tracking `end + report + session` close-out after charter publishes.
 
 ---
 
-## Phase 6 — Complete
+## Phase 6 — Automation Handoff
 
-After all phases complete, display:
+After charter completes, show:
 
 ```
 Manual Testing Complete — [CARD_ID]
 
-  Step 1 — UI Testing (Figma)  : [completed / skipped — no Figma URL]
-  Step 2 — Manual Testing      : X Pass | X Fail | X Observation | X Blocked
-  Step 3 — Bug Reporting       : [N] bugs filed — [list of bug keys]
-  Step 4 — Test Charter        : [published URL or "saved locally"]
+  UI Testing (Figma)  : [completed / skipped]
+  Manual Testing      : X Pass | X Fail | X Observation | X Blocked
+  Bug Reporting       : [N] bug(s) filed — [keys]
+  Test Charter        : [published URL or "saved locally"]
 
-Report : outputs/test-execution-[CARD_ID]-[date].md
+  Automation hints    : outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md
 ```
+
+Then ask:
+> "Would you like to run the **Automation Agent** now to generate BDD tests from these results?
+> The hints file is ready — it will skip DOM re-discovery for elements already captured.
+> (yes / no)"
+
+- **If yes:** invoke automation skill, telling it the hints file path upfront:
+  > "Run automation for [CARD_ID]. Automation hints are at
+  > `outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md` — use them to skip DOM inspection."
+  ```
+  Skill: automation
+  ```
+
+- **If no:** exit with the summary above.
 
 ---
 
 ## Chat Output (Minimized)
 
-Show in chat:
-- Phase announcements (one line each)
-- Charter summary (5 lines)
-- Test count and failures (table + details for failures only)
-- Bug summary (list of created issue keys)
-- Final completion summary
+Show in chat: phase announcements (1 line), test count running total, failure details only, bug keys, final summary.
 
-Do NOT stream to chat:
-- Full charter text
-- All test results (save to file)
-- Full bug reports (save to file)
-- Verbose step-by-step execution logs
+Do NOT stream: full charter text, all test results (save to file), full bug reports, verbose execution logs.
 
 ---
 
@@ -305,5 +368,6 @@ Do NOT stream to chat:
 | Feature not deployed | Mark related tests 🔒 BLOCKED, continue |
 | AC missing | Ask user to describe what to test |
 | Playwright MCP unavailable | Stop, ask user to confirm it is running |
-| Figma URL missing | Skip UI Testing step silently, note it in final summary |
+| Figma URL missing / user says no | Skip UI Testing, note in final summary |
+| `browser_evaluate` returns null for element | Log "element not captured" in hints, continue |
 | Bug creation fails | Note failure, continue with remaining bugs, report at end |
