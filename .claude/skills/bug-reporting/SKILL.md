@@ -195,4 +195,32 @@ Show a summary:
 - Bug report posted: ✓
 - Notified: [Confirmed person's name]
 
+---
+
+## Step 8 — Clean up outputs/ report file (after successful Jira post)
+
+Only run this step if the Jira post in Step 6 succeeded.
+
+**Check for a file to clean up:**
+
+```bash
+ls outputs/ui-bugs-*.md 2>/dev/null
+```
+
+- **No files found** → skip silently.
+- **Exactly one file found** → delete it and confirm:
+  ```bash
+  rm outputs/{filename}
+  ```
+  > "`outputs/{filename}` removed."
+- **Multiple files found** → list them and ask:
+  > "Found multiple UI test reports in outputs/. Which should I remove? Reply with the number or 'none' to skip."
+  ```
+  1. outputs/ui-bugs-distributors-dst2974-20260105-143022.md
+  2. outputs/ui-bugs-transactions-20260105-151100.md
+  ```
+  Delete only the chosen file. If user says none → skip.
+
+Never delete files outside `outputs/ui-bugs-*.md`.
+
 Done.

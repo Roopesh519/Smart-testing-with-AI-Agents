@@ -479,6 +479,37 @@ NOTES
 
 ---
 
+### Step 4b — Save Report to outputs/ (if folder exists)
+
+Check whether the `outputs/` folder exists in the project root:
+
+```bash
+ls outputs/ 2>/dev/null && echo "EXISTS" || echo "MISSING"
+```
+
+**If `outputs/` exists:**
+
+1. Derive `URL_SLUG` from `TARGET_URL`:
+   - Split the URL path into segments
+   - Drop any UUID-like segments (pattern: 8-4-4-4-12 hex, e.g. `6f90a58d-db87-4740-91d4-d8d89599c23b`)
+   - Take the last 2 meaningful segments, joined with `-`, lowercased
+   - Example: `.../distributors/6f90a58d-.../DST2974` → `distributors-dst2974`
+
+2. Build filename: `ui-bugs-{URL_SLUG}-{YYYYMMDD-HHmmss}.md`
+   - Timestamp uses the current local time at report generation
+   - Example: `ui-bugs-distributors-dst2974-20260105-143022.md`
+
+3. Write the full report (identical content to Step 4) to `outputs/{filename}` using the Write tool.
+
+4. Store the path as `OUTPUT_FILE = outputs/{filename}`.
+
+5. Tell the user:
+   > "Report saved to `outputs/{filename}` — bug-reporting will clean it up after Jira post."
+
+**If `outputs/` does not exist** — skip this step silently.
+
+---
+
 ### Step 5 — Jira Bug Logging (optional)
 
 After showing the report, ask:
