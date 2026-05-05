@@ -208,6 +208,27 @@ QA Pipeline Complete — [CARD-ID]
 All done.
 ```
 
+Then immediately invoke the cleanup skill:
+
+```
+Skill: delete-files
+```
+
+---
+
+### Post-pipeline cleanup (all branches)
+
+After **any** branch completes successfully — Automation, Manual, or Full E2E —
+invoke the cleanup skill so the user can decide what to keep:
+
+```
+Skill: delete-files
+```
+
+The delete-files skill will list all files in `outputs/`, present three options
+(delete all / delete selected / keep all), and wait for user consent before
+removing anything.
+
 ---
 
 ## Step 5 — Standalone Skill Dispatch
