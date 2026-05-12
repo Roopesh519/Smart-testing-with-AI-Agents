@@ -38,6 +38,7 @@ automation  ui-test-figma (Figma MCP + Playwright CLI)
 | `automation` | Jira card ID | Gherkin + Step Defs + POM + dry-run | Atlassian, Playwright |
 | `manual-testing` | Jira card ID + app URL | Execution report + bugs + charter | Atlassian, Playwright |
 | `ui-test-figma` | Figma URL + app URL | UI mismatch report, Jira comment | Playwright (CLI+MCP), Figma (optional) |
+| `accessibility-testing` | Full page URL + Jira card (optional) | WCAG 2.1 A/AA report + Jira bugs | Playwright (CLI+MCP), Atlassian |
 | `bug-reporting` | Bug description | Bug filed on Jira card | Atlassian |
 | `test-charter` | Execution report MD file | Charter MD + published to API | Playwright (login) |
 
@@ -52,12 +53,13 @@ automation  ui-test-figma (Figma MCP + Playwright CLI)
 ## Dispatch Map (qa-agent routes)
 
 ```
-"automate CARD"  → automation
-"manual test"    → manual-testing  (calls ui-test-figma → bug-reporting → test-charter internally)
-"ui test"        → ui-test-figma   (standalone)
-"file bug"       → bug-reporting   (standalone)
-"charter"        → test-charter    (standalone)
-"full QA"        → automation THEN manual-testing → End-to-End complete
+"automate CARD"      → automation
+"manual test"        → manual-testing  (calls ui-test-figma → bug-reporting → test-charter internally)
+"ui test"            → ui-test-figma   (standalone)
+"accessibility test" → accessibility-testing (standalone, URL + optional Jira card)
+"file bug"           → bug-reporting   (standalone)
+"charter"            → test-charter    (standalone)
+"full QA"            → automation THEN manual-testing → End-to-End complete
 ```
 
 ## Playwright Usage Guide (token budget)
@@ -106,6 +108,7 @@ python3 $PROJECT/track_tokens.py session
 - automation: `start` → `jira_fetch` → `gherkin_generation` → `step_definitions` → `pom_generation` → `end`
 - manual-testing: `start` → `jira_fetch` → `ui_testing` → `test_execution` → `end`
 - ui-test-figma: `start` → `login` → `comparison` → `end`
+- accessibility-testing: `start` → `login` → `a11y_checks` → `end`
 - test-charter: `start` → `end`
 
 ## Artifact Locations
@@ -115,6 +118,8 @@ python3 $PROJECT/track_tokens.py session
 | Test execution report | `outputs/test-execution-[CARD]-[date].md` |
 | Test charter | `outputs/charters/[slug].md` |
 | Bug screenshots | `outputs/screenshots/T-[N]-[status].png` |
+| Accessibility report | `outputs/a11y-report-[slug]-[date].md` |
+| Accessibility baseline screenshot | `outputs/screenshots/a11y-baseline-[slug].png` |
 | Auth session | `.playwright-session.json` (gitignored) |
 | Token analytics | `~/.claude/token_analytics.png` |
 | Knowledge graph | `graphify-out/graph.html` (open in browser) |
