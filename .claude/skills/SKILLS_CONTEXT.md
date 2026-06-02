@@ -27,6 +27,9 @@ automation  ui-test-figma (Figma MCP + Playwright CLI)
     │            │
     └────────────┘
          │
+    Save Product Context
+    (product_context/{PRODUCT}/context.md)
+         │
     End-to-End Testing complete
 ```
 
@@ -123,3 +126,4 @@ python3 $PROJECT/track_tokens.py session
 | Auth session | `.playwright-session.json` (gitignored) |
 | Token analytics | `~/.claude/token_analytics.png` |
 | Knowledge graph | `graphify-out/graph.html` (open in browser) |
+| Product QA context | `.claude/skills/qa-agent/product_context/[PRODUCT]/context.md` |
