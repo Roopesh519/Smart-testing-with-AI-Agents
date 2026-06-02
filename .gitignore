@@ -5,3 +5,5 @@ test/step-definations/traceDir
 dist
 .venv
 .playwright-cli
+.env
+package-lock.json
