@@ -1,4 +1,8 @@
-# Smart Testing with AI Agents
+<h1 align="center">Smart Testing with AI Agents</h1> 
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/d0f7cd63-dfc7-43c7-87c8-be0092b238c3" width="819" />
+</p>
 
 ## Project Structure
 
