@@ -7,3 +7,5 @@ dist
 .playwright-cli
 .env
 package-lock.json
+outputs/charters/test.md
+outputs/screenshots/test.png
