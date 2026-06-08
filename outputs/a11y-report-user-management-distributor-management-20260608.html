@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility Report — user-management-distributor-management — 20260608</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #1a1a2e; background: #f4f6fb; padding: 2rem; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; color: #1a1a2e; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.2rem; color: #2d3a6e; margin: 2rem 0 0.75rem; border-bottom: 2px solid #e0e4f0; padding-bottom: 0.4rem; }
+    h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; color: #1a1a2e; }
+    .meta { font-size: 0.85rem; color: #555; margin-bottom: 1.5rem; }
+    .meta span { margin-right: 1.5rem; }
+    .badge { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-critical  { background: #fde8e8; color: #c0392b; }
+    .badge-serious   { background: #fef3e2; color: #d35400; }
+    .badge-moderate  { background: #fffbe6; color: #b8860b; }
+    .badge-minor     { background: #e8f5e9; color: #2e7d32; }
+    .badge-pass      { background: #e8f5e9; color: #2e7d32; }
+    .badge-fail      { background: #fde8e8; color: #c0392b; }
+    .badge-review    { background: #fffbe6; color: #b8860b; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0 1.5rem; }
+    .summary-card { background: #fff; border-radius: 8px; padding: 1rem; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .summary-card .count { font-size: 2rem; font-weight: 700; }
+    .summary-card .label { font-size: 0.78rem; color: #777; text-transform: uppercase; }
+    .summary-card.critical .count { color: #c0392b; }
+    .summary-card.serious  .count { color: #d35400; }
+    .summary-card.moderate .count { color: #b8860b; }
+    .summary-card.minor    .count { color: #2e7d32; }
+    .status-bar { display: flex; align-items: center; gap: 0.75rem; font-weight: 600; font-size: 1rem; margin-bottom: 1.5rem; }
+    .card { background: #fff; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid #ccc; }
+    .card.critical { border-color: #c0392b; }
+    .card.serious  { border-color: #d35400; }
+    .card.moderate { border-color: #b8860b; }
+    .card.minor    { border-color: #2e7d32; }
+    .card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .card-title { font-weight: 600; font-size: 0.95rem; }
+    .card dl { display: grid; grid-template-columns: 140px 1fr; gap: 0.3rem 1rem; font-size: 0.875rem; }
+    .card dt { font-weight: 600; color: #555; }
+    .card dd { color: #1a1a2e; }
+    pre { background: #1e1e2e; color: #cdd6f4; padding: 0.85rem 1rem; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0; white-space: pre-wrap; word-break: break-all; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin: 0.75rem 0; }
+    th { background: #eef0f8; text-align: left; padding: 0.55rem 0.75rem; font-weight: 600; color: #333; }
+    td { padding: 0.55rem 0.75rem; border-bottom: 1px solid #e8eaf0; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .check-pass { color: #2e7d32; font-weight: 600; }
+    .check-fail { color: #c0392b; font-weight: 600; }
+    .check-warn { color: #b8860b; font-weight: 600; }
+    .rec-list { list-style: none; counter-reset: rec; padding: 0; }
+    .rec-list li { counter-increment: rec; display: flex; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid #e8eaf0; font-size: 0.875rem; }
+    .rec-list li::before { content: counter(rec); background: #2d3a6e; color: #fff; min-width: 1.5rem; height: 1.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
+    .rec-list li:last-child { border-bottom: none; }
+    .raw-summary { background: #fff; border-radius: 8px; padding: 1rem 1.5rem; font-size: 0.875rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; gap: 2rem; flex-wrap: wrap; }
+    .raw-summary span { color: #555; }
+    .raw-summary strong { color: #1a1a2e; }
+    a { color: #2d3a6e; }
+    .screenshot { margin: 1rem 0; }
+    .screenshot img { max-width: 100%; border-radius: 6px; border: 1px solid #dde; }
+    footer { margin-top: 2rem; font-size: 0.78rem; color: #aaa; text-align: center; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Accessibility Test Report — WCAG 2.1 AA</h1>
+  <div class="meta">
+    <span><strong>Page:</strong> <a href="https://distributor.qa.zood-pay.net/user-management/distributor-management">https://distributor.qa.zood-pay.net/user-management/distributor-management</a></span>
+    <span><strong>Tested:</strong> 2026-06-08 09:30</span>
+    <span><strong>Tester:</strong> Claude (accessibility-testing skill)</span>
+    <span><strong>WCAG Level:</strong> 2.1 AA</span>
+  </div>
+
+  <!-- Executive Summary -->
+  <h2>Executive Summary</h2>
+  <div class="summary-grid">
+    <div class="summary-card critical"><div class="count">1</div><div class="label">Critical</div></div>
+    <div class="summary-card serious"> <div class="count">2</div> <div class="label">Serious</div></div>
+    <div class="summary-card moderate"><div class="count">0</div><div class="label">Moderate</div></div>
+    <div class="summary-card minor">   <div class="count">0</div>   <div class="label">Minor</div></div>
+  </div>
+
+  <div class="status-bar">
+    Overall Status: <span class="badge badge-fail">FAIL</span>
+  </div>
+
+  <!-- Screenshot -->
+  <h2>Baseline Screenshot</h2>
+  <div class="screenshot">
+    <img src="screenshots/a11y-baseline-user-management-distributor-management.png" alt="Baseline screenshot of distributor management page">
+  </div>
+
+  <!-- Automated Violations -->
+  <h2>Automated Violations (axe-core)</h2>
+
+  <h3><span class="badge badge-critical">Critical</span></h3>
+
+  <div class="card critical">
+    <div class="card-header">
+      <span class="badge badge-critical">Critical</span>
+      <span class="card-title">label — Form elements must have labels</span>
+    </div>
+    <dl>
+      <dt>WCAG</dt>      <dd>4.1.2 / 1.3.1 — Level A</dd>
+      <dt>Affected</dt>  <dd>11 element(s)</dd>
+      <dt>Fix</dt>       <dd>Associate a visible &lt;label&gt; or add aria-label / aria-labelledby to every form input</dd>
+      <dt>Reference</dt> <dd><a href="https://dequeuniversity.com/rules/axe/4.9/label?application=axeAPI">https://dequeuniversity.com/rules/axe/4.9/label</a></dd>
+    </dl>
+    <p style="font-size:.8rem;margin-top:.6rem;font-weight:600;color:#555;">Affected elements (sample):</p>
+    <pre>&lt;input type="text" id="myInput" data-testid="language-dropdown" readonly value="English"&gt;
+&lt;input type="checkbox" checked&gt;  (×4 instances)
++ 6 additional unlabelled inputs</pre>
+  </div>
+
+  <h3><span class="badge badge-serious">Serious</span></h3>
+
+  <div class="card serious">
+    <div class="card-header">
+      <span class="badge badge-serious">Serious</span>
+      <span class="card-title">list — &lt;ul&gt; / &lt;ol&gt; must only directly contain &lt;li&gt;, &lt;script&gt; or &lt;template&gt; elements</span>
+    </div>
+    <dl>
+      <dt>WCAG</dt>      <dd>1.3.1 — Level A</dd>
+      <dt>Affected</dt>  <dd>1 element(s)</dd>
+      <dt>Fix</dt>       <dd>Ensure &lt;ul&gt; and &lt;ol&gt; elements only contain valid list children; remove any non-&lt;li&gt; direct children</dd>
+      <dt>Reference</dt> <dd><a href="https://dequeuniversity.com/rules/axe/4.9/list?application=axeAPI">https://dequeuniversity.com/rules/axe/4.9/list</a></dd>
+    </dl>
+    <p style="font-size:.8rem;margin-top:.6rem;font-weight:600;color:#555;">Affected element:</p>
+    <pre>&lt;ul class="overflow-y-scroll overflow-x-hidden scrollBar scroll-auto h-scrollbarheight"&gt;</pre>
+  </div>
+
+  <div class="card serious">
+    <div class="card-header">
+      <span class="badge badge-serious">Serious</span>
+      <span class="card-title">listitem — &lt;li&gt; elements must be contained in a &lt;ul&gt; or &lt;ol&gt;</span>
+    </div>
+    <dl>
+      <dt>WCAG</dt>      <dd>1.3.1 — Level A</dd>
+      <dt>Affected</dt>  <dd>6 element(s)</dd>
+      <dt>Fix</dt>       <dd>Wrap orphaned &lt;li&gt; pagination items inside a proper &lt;ul&gt; or &lt;ol&gt; container</dd>
+      <dt>Reference</dt> <dd><a href="https://dequeuniversity.com/rules/axe/4.9/listitem?application=axeAPI">https://dequeuniversity.com/rules/axe/4.9/listitem</a></dd>
+    </dl>
+    <p style="font-size:.8rem;margin-top:.6rem;font-weight:600;color:#555;">Affected elements (sample):</p>
+    <pre>&lt;li class="previous disabled"&gt;
+&lt;li class="text-sm font-[400]..."&gt;&lt;a rel="..." role="button"&gt;...&lt;/a&gt;&lt;/li&gt;
+&lt;li class="break"&gt;&lt;a role="button" tabindex="0" aria-label="Jump forward"&gt;...&lt;/a&gt;&lt;/li&gt;
++ 3 additional pagination &lt;li&gt; items outside a list container</pre>
+  </div>
+
+  <!-- Manual Checks -->
+  <h2>Manual Checks</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Criterion</th><th>Status</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Keyboard traversal</td><td>2.1.1</td>
+        <td class="check-pass">&#10003; Pass</td>
+        <td>37 focusable elements; 2 removed from tab order (intentional). Navigation links, buttons and inputs all reachable.</td>
+      </tr>
+      <tr>
+        <td>Focus visibility</td><td>2.4.7</td>
+        <td class="check-warn">&#9888; Review</td>
+        <td>12 <code>outline:none</code> rules found (all from vendor Swagger-UI CSS — not app code). No <code>:focus-visible</code> detected in stylesheets. Recommend auditing app-level focus styles to confirm indicators are visible.</td>
+      </tr>
+      <tr>
+        <td>Skip link</td><td>2.4.1</td>
+        <td class="check-fail">&#10007; Fail</td>
+        <td>No skip navigation link present. Keyboard users must tab through the full sidebar navigation on every page load.</td>
+      </tr>
+      <tr>
+        <td>Heading hierarchy</td><td>1.3.1</td>
+        <td class="check-pass">&#10003; Pass</td>
+        <td>1 heading total — &lt;h1&gt; "List of Distributors". No level skips. Correct structure.</td>
+      </tr>
+      <tr>
+        <td>Image alt text</td><td>1.1.1</td>
+        <td class="check-warn">&#9888; Review</td>
+        <td>45 images — all have alt attributes (0 missing, 0 empty). 1 inline SVG missing aria-label and &lt;title&gt; element.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Recommendations -->
+  <h2>Recommendations</h2>
+  <ol class="rec-list">
+    <li><strong><span class="badge badge-critical">Critical — P1</span></strong> Add <code>aria-label</code> or associate a visible <code>&lt;label&gt;</code> to all 11 unlabelled form inputs. At minimum, the language dropdown input and all checkbox inputs must have accessible names. This blocks screen reader users from understanding form controls.</li>
+    <li><strong><span class="badge badge-serious">Serious — P2</span></strong> Fix the pagination component: wrap the orphaned <code>&lt;li&gt;</code> elements inside a proper <code>&lt;ul&gt;</code> container, and ensure the <code>&lt;ul&gt;</code> in the sidebar only contains direct <code>&lt;li&gt;</code> children. This ensures screen readers announce list semantics correctly.</li>
+    <li><strong><span class="badge badge-serious">Serious — P2</span></strong> Add a "Skip to main content" link as the very first focusable element in the page. This allows keyboard users to bypass the sidebar navigation and jump directly to the page content (WCAG 2.4.1).</li>
+    <li><strong><span class="badge badge-review">Review</span></strong> Add <code>aria-label</code> or a <code>&lt;title&gt;</code> child to the inline SVG element so screen readers can describe it meaningfully.</li>
+    <li><strong><span class="badge badge-review">Review</span></strong> Audit app-level CSS for focus indicator suppression and adopt <code>:focus-visible</code> to provide visible focus rings for keyboard users while keeping the UI clean for mouse users.</li>
+  </ol>
+
+  <!-- axe-core Raw Summary -->
+  <h2>axe-core Raw Summary</h2>
+  <div class="raw-summary">
+    <span><strong>Violations:</strong> 3</span>
+    <span><strong>Incomplete:</strong> 0</span>
+    <span><strong>Passes:</strong> 23</span>
+    <span><strong>Engine:</strong> axe-core 4.9.1</span>
+    <span><strong>Tags:</strong> wcag2a, wcag2aa</span>
+  </div>
+
+  <footer>Generated by Claude accessibility-testing skill &middot; WCAG 2.1 AA &middot; 2026-06-08</footer>
+
+</div>
+</body>
+</html>
