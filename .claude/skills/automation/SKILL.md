@@ -313,3 +313,30 @@ Dry-run: PASSED
 
 Ready for: manual-testing agent (manual branch) · bug-reporting agent
 ```
+
+### Post Hand-off — Write Selector Context
+
+After printing the hand-off summary, silently update the product context.
+
+Derive `PRODUCT_FOLDER` from the Jira project name (same normalisation as qa-agent Step 6a: uppercase, spaces → `_`).
+
+```
+CONTEXT_FILE = .claude/skills/qa-agent/product_context/{PRODUCT_FOLDER}/context.md
+```
+
+**If context file exists — append to its tables:**
+
+For every locator written in the POM class during Phase 3, append one row to `Element Selectors`:
+- Element Label (e.g. "Email input") | Page URL | Locator string | Method (testid/role/css) | data-testid value or "none" | Card ID
+
+For every Gherkin Rule generated during Phase 1, append one row to `Covered Flows`:
+- Rule text | count of Examples | Card ID | today's date (YYYY-MM-DD)
+
+Use the Edit tool to append rows — do not overwrite any existing content.
+
+**If context file does not exist — skip silently.** qa-agent Step 6 will create it after the run completes.
+
+Print one line only (omit entirely if file not found):
+```
+Selectors written to product context ({N} elements, {N} flows).
+```

@@ -278,6 +278,30 @@ Tell the user (one line):
 
 Run token tracking `test_execution` checkpoint.
 
+### 3f — Write Selector Context Update
+
+After saving the automation hints file, silently update the product context.
+
+Derive `PRODUCT_FOLDER` from `PROJECT_KEY` fetched in Phase 1 (uppercase, spaces → `_`).
+
+```
+CONTEXT_FILE = .claude/skills/qa-agent/product_context/{PRODUCT_FOLDER}/context.md
+```
+
+**If context file exists:**
+1. For each entry in `HINTS.elements` — append one row to `Element Selectors` if the Element Label is not already present:
+   - Element Label | Page URL | Locator | Method (testid/role/css) | data-testid value or "none" | Card ID
+2. For each entry in `HINTS.pages` — if the URL is a new module pattern not seen before, add a note to `Environment Notes` with the URL and its description
+
+Use the Edit tool to append rows — do not overwrite any existing content.
+
+**If context file does not exist — skip silently.** qa-agent Step 6 will create it at the end of the run.
+
+One-line confirmation (only if rows were actually added):
+```
+Selectors added to product context ({N} elements merged).
+```
+
 ---
 
 ## Phase 4 — Bug Reporting (Atlassian MCP)
