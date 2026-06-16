@@ -55,6 +55,17 @@ Store as `TARGET_URL`. Extract base origin as `BASE_URL`.
 
 **Question 3 — Check if already logged in:**
 
+First, check for a saved session file:
+```bash
+ls .playwright-session.json 2>/dev/null && echo "SESSION_EXISTS" || echo "NO_SESSION"
+```
+
+**If `.playwright-session.json` exists:**
+- Set `SESSION_FILE = .playwright-session.json`
+- Skip login entirely — proceed directly to Step 1b
+- If a screenshot taken with `--storage-state` redirects to the login page, the session has expired: delete the file and fall through to the login flow below
+
+**If no session file:**
 Navigate to `BASE_URL` via `browser_navigate` and take a `browser_snapshot`.
 - **Dashboard/home page** → session active, skip to Step 1b.
 - **Login form** → ask for email, then password.
@@ -118,6 +129,7 @@ Write result to `.playwright-session.json`.
 ```bash
 mkdir -p outputs/screenshots
 npx playwright screenshot \
+  --storage-state .playwright-session.json \
   --browser chromium \
   --full-page \
   --viewport-size "1920,1080" \
@@ -125,6 +137,7 @@ npx playwright screenshot \
   "TARGET_URL" \
   outputs/screenshots/app-capture.png
 ```
+If `.playwright-session.json` does not exist, omit the `--storage-state` flag.
 Store as `APP_SCREENSHOT = outputs/screenshots/app-capture.png`.
 
 **3. Extract computed CSS via `browser_evaluate`:**

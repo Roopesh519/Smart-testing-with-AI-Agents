@@ -15,14 +15,17 @@ user-invocable: true
 
 # Manual Testing Skill — Full Branch Orchestrator
 
-## Token Budget Rules — enforce throughout this skill
+## Token Budget Rules — Zero Tolerance After Login
 
-| Operation | USE | NEVER USE |
-|-----------|-----|-----------|
-| Test screenshots | `npx playwright screenshot --full-page URL file.png` | `browser_screenshot()` |
-| DOM reading | `browser_evaluate` with targeted selectors only | `browser_snapshot()` |
-| Login | Playwright MCP `browser_fill` / `browser_click` | — |
-| Element discovery | `browser_evaluate` on `document.activeElement` after each interaction | `browser_snapshot()` |
+| Operation | Allowed | Forbidden | Token cost of violation |
+|-----------|---------|-----------|------------------------|
+| Login page selectors | ONE `browser_snapshot()` at login URL only | `browser_snapshot()` on any other page | ~10k per call |
+| All other DOM reading | `browser_evaluate` with targeted CSS/JS selector | `browser_snapshot()` anywhere else | ~10k wasted |
+| All screenshots | `npx playwright screenshot --storage-state .playwright-session.json --full-page URL file.png` | `browser_screenshot()` | ~3k per image |
+| Session reuse | Check `.playwright-session.json` before login — skip login if file exists and is valid | Re-logging in when session file exists | full login round-trip wasted |
+
+**After the ONE allowed login snapshot — never call `browser_snapshot()` again in this run.**
+Use `browser_evaluate` with a specific CSS selector or JS expression for all DOM inspection.
 
 ## Token Tracking
 
@@ -158,11 +161,24 @@ Proceed on confirmation.
 
 ### 3b — Setup Browser + Capture Login Selectors
 
+**Before navigating — check for an existing session:**
+```bash
+ls .playwright-session.json 2>/dev/null && echo "SESSION_EXISTS" || echo "NO_SESSION"
+```
+
+**If `.playwright-session.json` exists:**
+- Use it for all CLI screenshots in Phase 3c — skip the entire login flow below
+- Verify the session is still valid by navigating to `APP_URL`:
+  - If the dashboard/home loads → session valid, proceed directly to 3a test plan generation
+  - If redirected to login → session expired, delete the file and proceed with login below
+
+**If no session file (or session expired):**
+
 1. `browser_navigate(url: APP_URL)`
 2. `browser_wait_for(state: "networkidle")`
 
 **If login required:**
-3. `browser_snapshot()` — one allowed snapshot to read login form selectors
+3. `browser_snapshot()` — ONE allowed snapshot to read login form selectors
 4. Record all login elements found into `HINTS.elements[LOGIN_URL]`:
    - For each input/button interacted with, note: tag, locator used, role/text, data-testid if present
 5. Fill email → `browser_fill`
@@ -177,6 +193,27 @@ Proceed on confirmation.
 12. `browser_wait_for(state: "networkidle")`
 
 Confirm login success before proceeding.
+
+**Save session state immediately after successful login:**
+```javascript
+browser_evaluate({
+  expression: `(() => JSON.stringify({
+    ls: Object.fromEntries(Object.entries(localStorage)),
+    ss: Object.fromEntries(Object.entries(sessionStorage)),
+    url: window.location.href
+  }))()`
+})
+```
+Write the result to `.playwright-session.json`. All Phase 3c CLI screenshots must now use:
+```bash
+npx playwright screenshot \
+  --storage-state .playwright-session.json \
+  --browser chromium \
+  --full-page \
+  --wait-for-timeout 2000 \
+  "TARGET_URL" \
+  outputs/screenshots/T-[N]-[status].png
+```
 
 Add to `HINTS.pages`: `{ url: LOGIN_URL, description: "Login page" }`
 Add to `HINTS.notes`: any special login behavior observed (OTP type, error format, redirect URL)
