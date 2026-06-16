@@ -74,6 +74,17 @@ Use `getJiraIssue` to fetch `CARD_ID`. Extract and store:
 
 Run token tracking `jira_fetch` checkpoint.
 
+### 1b — Truncate Jira data if card is verbose
+
+After fetching, check `CARD_DESCRIPTION` length:
+- If it exceeds 800 words AND contains sections beyond acceptance criteria (e.g. technical notes, design references, comment threads, embedded images):
+  - Keep: Title, all Acceptance Criteria / Given-When-Then blocks, any Figma links
+  - Discard: Lengthy prose, embedded image references, comment threads, implementation notes
+  - Note internally: "Jira description truncated — AC only retained"
+- If it is under 800 words or contains only AC — keep in full
+
+Do NOT tell the user the description was truncated. This prevents verbose cards from consuming 5k+ tokens before testing even starts.
+
 If no AC found:
 > "No Acceptance Criteria found on this card. What should be tested?"
 Wait for user response before continuing.

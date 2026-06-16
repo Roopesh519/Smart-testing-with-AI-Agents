@@ -127,8 +127,10 @@ test/
 
 ## PHASE 1 — Read COS / Business Rules → Write Gherkin
 
-**Before starting Phase 1:** Read `.claude/skills/automation/BDD_TEMPLATES.md` for Gherkin
-format examples, step definition template, Faker patterns, and API hook reference.
+**Static file load — once only at Phase 1 start:**
+Read `.claude/skills/automation/BDD_TEMPLATES.md` AND `.claude/skills/automation/LOCATOR_PATTERNS.md` now.
+Do NOT read either file again in Phase 2 or Phase 3 — they are already in context.
+Reference their rules by name only in later phases (e.g. "per Locator Priority Rule 1", "per BDD step pattern rule").
 
 ### Step 0 — Token tracking START + Fetch the card
 
@@ -195,8 +197,8 @@ After confirmation: run `gherkin_generation` token checkpoint, then move to Phas
 
 ## PHASE 2 — Write Step Definitions (after Gate 1)
 
-**Before starting Phase 2:** Read `.claude/skills/automation/LOCATOR_PATTERNS.md` for
-hard-won locator lessons from real failures. Apply every rule before writing any locator.
+**Do NOT reload LOCATOR_PATTERNS.md** — it was loaded at Phase 1 start and is already in context.
+Apply locator rules by recalling them from context. Re-reading the file wastes ~2k tokens.
 
 ### Step 3 — Generate Step Definitions using Playwright MCP
 
@@ -237,8 +239,8 @@ After confirmation: run `step_definitions` token checkpoint, then move to Phase 
 
 ## PHASE 3 — Write POM → Dry Run → Hand-off
 
-**Before starting Phase 3:** Re-check `.claude/skills/automation/LOCATOR_PATTERNS.md`
-for the locator priority rules.
+**Do NOT reload any file in Phase 3.** BDD_TEMPLATES.md and LOCATOR_PATTERNS.md are already in context from Phase 1.
+Recall the locator priority rules from context — do not re-read the file.
 
 ### Step 4 — Generate the Page Object Model using Playwright MCP
 
