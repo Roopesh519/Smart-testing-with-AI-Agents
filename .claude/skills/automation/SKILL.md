@@ -178,7 +178,9 @@ Use the Gherkin format from BDD_TEMPLATES.md.
 - Scan existing `.feature` files for reusable steps — reuse exact text
 - API hook tags go **directly above** the `Example:` line; stack multiple on separate lines
 
-### ══ GATE 1 — MANDATORY STOP AFTER GHERKIN ══
+### ══ GATE 1 ══
+
+**If AUTO_APPROVE = false (default — standalone run):**
 
 Present Gherkin and ask:
 
@@ -191,7 +193,15 @@ Present Gherkin and ask:
 > **Type "looks good" or "confirmed" to proceed to step definitions.**
 
 Do not write any `.cjs` files until confirmed. Iterate until approved.
-After confirmation: run `gherkin_generation` token checkpoint, then move to Phase 2.
+
+**If AUTO_APPROVE = true (called from qa-agent full pipeline):**
+
+Display a compact summary only — do NOT wait:
+> "Gherkin generated for [CARD-ID]: {N} Rules, {N} scenarios total. Auto-approved — proceeding to step definitions."
+
+Immediately move to Phase 2 without waiting for any input.
+
+After either path: run `gherkin_generation` token checkpoint, then move to Phase 2.
 
 ---
 
@@ -220,7 +230,9 @@ Use the step definition template from BDD_TEMPLATES.md.
 - Step pattern must match the `.feature` file **exactly**, character for character
 - Always guard `this.viewXxxData` with a null check + descriptive error
 
-### ══ GATE 2 — MANDATORY STOP AFTER STEP DEFINITIONS ══
+### ══ GATE 2 ══
+
+**If AUTO_APPROVE = false (default — standalone run):**
 
 Present step definitions and ask:
 
@@ -233,7 +245,15 @@ Present step definitions and ask:
 > **Type "looks good" or "confirmed" to proceed to the POM.**
 
 Do not write the POM until confirmed.
-After confirmation: run `step_definitions` token checkpoint, then move to Phase 3.
+
+**If AUTO_APPROVE = true (called from qa-agent full pipeline):**
+
+Display a compact summary only — do NOT wait:
+> "Step definitions generated for [CARD-ID]: {N} steps across {N} files. Auto-approved — proceeding to POM."
+
+Immediately move to Phase 3 without waiting for any input.
+
+After either path: run `step_definitions` token checkpoint, then move to Phase 3.
 
 ---
 

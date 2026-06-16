@@ -55,14 +55,32 @@ Jira Card ID
 
 ---
 
-## Phase 0 — Collect Card ID
+## Phase 0 — Collect Card ID + Load Context
 
 Run token tracking `start` checkpoint.
 
 If the user has not already provided a Jira card ID, ask:
 > "Please share the **Jira card ID** to begin (e.g. `PROJ-123`)."
 
-Wait for the card ID. Then immediately proceed to Phase 1 — do not ask for anything else yet.
+Wait for the card ID.
+
+**After card ID is known — check for product context:**
+
+Derive the project key prefix (e.g. `QE-89` → `QE`) and check:
+```
+.claude/skills/qa-agent/product_context/{PREFIX}/context.md
+```
+
+**If context file exists:**
+- Read it and extract: `CTX_APP_URL`, `CTX_USERNAME`, `CTX_PASSWORD`, `CTX_LOGIN_URL`, `CTX_OTP`
+- Set `CONTEXT_LOADED = true`
+- Confirm one line: "Context loaded for {PRODUCT_NAME} — using saved URL and credentials."
+
+**If context file not found:**
+- Set `CONTEXT_LOADED = false`
+- Collect URL and credentials during Phase 1 as normal
+
+Then immediately proceed to Phase 1 — do not ask for anything else yet.
 
 ---
 
@@ -352,27 +370,48 @@ Selectors added to product context ({N} elements merged).
 
 ---
 
-## Phase 4 — Bug Reporting (Atlassian MCP)
+## Phase 4 — Bug Reporting (Fully Automated)
 
-> **[Step 3/4] Bug Reporting — filing [N] bug(s) for [CARD_ID]...**
+> **[Step 3/4] Bug Reporting — filing bugs for [CARD_ID]...**
 
-For each ❌ FAIL and ⚠️ OBSERVATION:
-1. Create Bug issue in same project as `CARD_ID`
-2. Summary: clear bug title
-3. Description: steps to reproduce, expected vs actual, screenshot reference
-4. Severity: Critical (crash/data loss) | High (AC failed) | Medium (partial) | Low (cosmetic)
-5. Link bug to original card ("relates to")
+Do NOT invoke the `bug-reporting` skill. File bugs directly using Atlassian MCP inline —
+this keeps context contiguous and avoids a second skill invocation.
 
-Parallelize bug creation where possible.
+**Step 4a — Build bug payload for each ❌ FAIL and ⚠️ OBSERVATION**
 
-Add summary comment to `CARD_ID`:
+Derive all fields from test execution data — no user input needed:
+
+| Field | Source |
+|-------|--------|
+| Summary | `"T-{N}: {test name} — {actual outcome in one line}"` |
+| Description | Steps from test case + expected vs actual from execution log |
+| Severity | AC explicitly failed → High · Assertion failed → Medium · Observation → Low |
+| Screenshot | Match `outputs/screenshots/T-{N}-*.png` by test ID — use exact filename |
+
+**Step 4b — File each bug via Atlassian MCP (parallelise where possible)**
+
+For each failure:
+1. `createJiraIssue` — issuetype: Bug, summary and description derived above, project: same as `CARD_ID`
+2. `createIssueLink` — link new bug "relates to" `CARD_ID`
+3. Screenshot attachment — use Jira REST API curl (same method as bug-reporting SKILL.md Step 6b); skip silently if `.env` credentials not set
+
+**Step 4c — Add summary comment to original card**
+
+`addCommentToJiraIssue` on `CARD_ID`:
 ```
 🧪 Manual Testing Complete
 
-Results: X Pass | X Fail | X Observation | X Blocked | X Total
-Bugs filed: [PROJ-789], [PROJ-790]
-Report: outputs/test-execution-[CARD_ID]-[YYYYMMDD].md
+Results: {X} Pass | {X} Fail | {X} Observation | {X} Blocked | {X} Total
+Bugs filed: {BUG-KEY1}, {BUG-KEY2}, ...
+Report: outputs/test-execution-{CARD_ID}-{YYYYMMDD}.md
 ```
+
+**Step 4d — Announce**
+```
+Bug Reporting complete — {N} bug(s) filed: {BUG-KEY1}, {BUG-KEY2}, ...
+```
+
+Run `bug_reporting` token checkpoint.
 
 ---
 
@@ -394,7 +433,7 @@ Run token tracking `end + report + session` close-out after charter publishes.
 
 ## Phase 6 — Automation Handoff
 
-After charter completes, show:
+After charter completes, show the final summary:
 
 ```
 Manual Testing Complete — [CARD_ID]
@@ -403,22 +442,31 @@ Manual Testing Complete — [CARD_ID]
   Manual Testing      : X Pass | X Fail | X Observation | X Blocked
   Bug Reporting       : [N] bug(s) filed — [keys]
   Test Charter        : [published URL or "saved locally"]
-
   Automation hints    : outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md
 ```
 
-Then ask:
+**If AUTO_APPROVE = true (called from qa-agent full pipeline):**
+
+Do NOT ask. Immediately chain to automation:
+> "Auto-invoking Automation Agent — generating BDD tests from execution results.
+> Hints file ready: `outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md` — DOM re-discovery skipped for captured elements."
+
+Invoke:
+```
+Skill: automation  args: [CARD_ID]  AUTO_APPROVE=true  hints: outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md
+```
+
+**If AUTO_APPROVE = false (standalone run):**
+
+Ask once:
 > "Would you like to run the **Automation Agent** now to generate BDD tests from these results?
-> The hints file is ready — it will skip DOM re-discovery for elements already captured.
+> The hints file is ready — DOM re-discovery will be skipped for captured elements.
 > (yes / no)"
 
-- **If yes:** invoke automation skill, telling it the hints file path upfront:
-  > "Run automation for [CARD_ID]. Automation hints are at
-  > `outputs/automation-hints-[CARD_ID]-[YYYYMMDD].md` — use them to skip DOM inspection."
+- **If yes:** invoke automation with hints file path:
   ```
   Skill: automation
   ```
-
 - **If no:** exit with the summary above.
 
 ---

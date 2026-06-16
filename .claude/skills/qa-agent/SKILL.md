@@ -73,6 +73,20 @@ If the user's message contains `--reset-context`:
 - At Step 6, overwrite the existing context file (replace, don't merge)
 - Confirm: "Context reset — starting fresh for {PRODUCT_NAME}."
 
+### 0e — Set AUTO_APPROVE flag
+
+Evaluate after context load. Set `AUTO_APPROVE = true` when ALL three conditions are met:
+1. `CTX_APP_URL` is set (product context has a saved App URL)
+2. `CTX_USERNAME` and `CTX_PASSWORD` are set
+3. The user invoked full pipeline — said "full QA", "run everything", "end to end", "full pipeline", or picked option C or 6
+
+Set `AUTO_APPROVE = false` when any condition is not met, or when:
+- The user said "manual gates", "confirm each step", or "don't auto-approve"
+- `--reset-context` was passed (credentials not yet confirmed)
+
+When dispatching to any skill in AUTO_APPROVE mode, pass it explicitly in the invocation message:
+> "Run [skill] for [CARD-ID]. AUTO_APPROVE = true. APP_URL = {CTX_APP_URL}. USERNAME = {CTX_USERNAME}."
+
 ---
 
 ## Step 1 — Collect Jira Card Input
@@ -215,8 +229,19 @@ Once complete, report back:
 
 Activate when the user selects option 6 / says "full QA" / "run everything" / "end to end".
 
-#### Pre-pipeline questions (one prompt)
+#### Pre-pipeline setup
 
+**If AUTO_APPROVE = true (context loaded with URL and credentials):**
+
+Skip all setup questions. Announce:
+> "**Full E2E Pipeline — [CARD-ID]** running with saved context for {PRODUCT_NAME}.
+> App: {CTX_APP_URL} | Env: {CTX_ENVIRONMENT} | Auto-approve: ON"
+
+Proceed immediately to Phase 1 — Automation Testing.
+
+**If AUTO_APPROVE = false (no context, first run, or reset):**
+
+Ask once in a single message:
 > **Full E2E Pipeline — Quick Setup for [CARD-ID]**
 >
 > 1. App URL (e.g. `https://staging.myapp.com`)
