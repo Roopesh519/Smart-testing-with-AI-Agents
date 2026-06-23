@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "@playwright/cli": "^0.1.8",
+    "@playwright/test": "^1.60.0",
+    "axios": "*",
+    "dotenv": "^17.2.3",
+    "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "*",
+    "cucumber-html-reporter": "*",
+    "istanbul-lib-coverage": "^3.2.2",
+    "multiple-cucumber-html-reporter": "*",
+    "nyc": "^17.1.0",
+    "uuid": "^11.1.0"
+  },
+  "scripts": {
+    "test": "npx @cucumber/cucumber --config cucumber.cjs",
+    "test:report": "npx @cucumber/cucumber --config cucumber.cjs --format html:reports/report.html",
+    "test:headed": "HEADLESS=false npx @cucumber/cucumber --config cucumber.cjs",
+    "test:dry-run": "npx @cucumber/cucumber --config cucumber.cjs --dry-run",
+    "cucumber": "npx @cucumber/cucumber --config cucumber.cjs",
+    "generate_report_cobertura": "nyc report --temp-dir ./test/step-definations/coverageData --reporter cobertura --report-dir ./coverage-cobertura",
+    "generate_report_json": "nyc report --temp-dir ./test/step-definations/coverageData --reporter json --report-dir ./coverage-json"
+  }
+}

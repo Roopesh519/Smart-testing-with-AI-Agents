@@ -9,3 +9,4 @@ dist
 package-lock.json
 outputs/charters/test.md
 outputs/screenshots/test.png
+qa-pack.zip
